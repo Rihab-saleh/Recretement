@@ -11,17 +11,13 @@ use Illuminate\Support\Facades\Auth;
 
 class OffreController extends Controller
 {
-    /**
-     * Formulaire de création d'une offre (manager).
-     */
+    
     public function create()
     {
         return view('offres.create');
     }
 
-    /**
-     * Enregistre une nouvelle offre.
-     */
+    
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -32,11 +28,9 @@ class OffreController extends Controller
             'salaire'              => 'nullable|numeric|min:0',
             'date_fin'             => 'nullable|date|after_or_equal:today',
             'nombre_candidats_max' => 'nullable|integer|min:1',
-            // Ajoutez ici les autres champs réels de votre formulaire si besoin
         ]);
 
-        // Récupère une copie fraîche du manager connecté pour éviter de lire
-        // un modèle Auth::user() mis en cache/périmé dans la session.
+        
         $manager = Auth::user()->fresh();
 
         $validated['personne_id'] = Auth::id();
@@ -46,7 +40,6 @@ class OffreController extends Controller
             ? $manager->departement
             : null;
 
-        // Ensure salaire has a value to avoid DB errors when the column is not nullable
         if (!array_key_exists('salaire', $validated) || $validated['salaire'] === null) {
             $validated['salaire'] = 0;
         }
@@ -70,9 +63,6 @@ class OffreController extends Controller
         return redirect()->back()->with('success', 'Offre supprimée avec succès.');
     }
 
-    /**
-     * Liste des offres ouvertes (côté candidat).
-     */
     public function index()
     {
         $offres = Offre::where('statut', 'ouvert')
@@ -202,11 +192,19 @@ class OffreController extends Controller
 
     public function candidatsAcceptes()
     {
-        $candidatures = Candidature::with(['personne', 'offre'])
-            ->whereHas('offre', function ($query) {
-                $query->where('personne_id', Auth::id());
-            })
+        // Le département de rattachement du manager connecté (ex: "marketing").
+        $departement = Auth::user()->departement;
+
+        // On liste ici les employés dont le département ACTUEL (Candidat::affectation,
+        // modifiable par le RH à tout moment) correspond au département du manager —
+        // et non plus l'offre d'origine sur laquelle ils avaient postulé. Ainsi, si le RH
+        // change le département d'un employé, il disparaît automatiquement de cette liste
+        // pour apparaître dans celle du nouveau manager concerné.
+        $candidatures = Candidature::with(['personne.candidat', 'offre'])
             ->where('statut', 'accepté')
+            ->whereHas('personne.candidat', function ($query) use ($departement) {
+                $query->where('affectation', $departement);
+            })
             ->latest()
             ->get();
 
@@ -223,10 +221,13 @@ class OffreController extends Controller
             'message' => 'required|string|max:1000',
         ]);
 
-        $candidature = Candidature::with(['personne', 'offre'])->findOrFail($candidatureId);
+        $candidature = Candidature::with(['personne.candidat', 'offre'])->findOrFail($candidatureId);
 
-        // Le manager ne peut signaler que les candidats acceptés sur ses propres offres
-        if (!$candidature->offre || $candidature->offre->personne_id !== Auth::id()) {
+        // Le manager ne peut signaler qu'un employé actuellement rattaché à SON département
+        // (Candidat::affectation), pas seulement un candidat de ses propres offres d'origine —
+        // cohérent avec la liste affichée dans candidatsAcceptes().
+        $departementCandidat = $candidature->personne->candidat->affectation ?? null;
+        if ($candidature->statut !== 'accepté' || $departementCandidat !== Auth::user()->departement) {
             abort(403);
         }
 

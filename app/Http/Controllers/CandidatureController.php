@@ -38,11 +38,13 @@ class CandidatureController extends Controller
     {
         $request->validate([
             'offre_id'          => 'required|exists:offres,id',
-            'telephone'         => 'required|string|max:20',
+            'telephone'         => 'required|string|max:20|regex:/^[0-9]+$/',
             'cv'                => 'nullable|file|mimes:pdf|max:2048',
             'lettre_motivation' => 'nullable|string|max:2000',
             'experience'        => 'required|integer|min:0',
             'diplome'           => 'required|string|max:255',
+        ], [
+            'telephone.regex' => 'Le numéro de téléphone ne doit contenir que des chiffres.',
         ]);
 
         $offre = Offre::findOrFail($request->offre_id);

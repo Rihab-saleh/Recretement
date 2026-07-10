@@ -98,7 +98,6 @@
                     <div class="adresse-entreprise">Fiche de paie générée automatiquement</div>
                     <div class="info-entreprise">
                         <strong>Établissement :</strong> {{ $candidat->affectation ?? '—' }}<br>
-                        <strong>Type de salaire :</strong> {{ $typeSalaire === 'journalier' ? 'Journalier' : 'Mensuel fixe' }}
                     </div>
                 </div>
             </td>

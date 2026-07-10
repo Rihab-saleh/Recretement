@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Candidat;
 use App\Models\Candidature;
 use App\Models\Notification;
 use App\Models\Offre;
+use App\Exports\AffectationsExport;
+use App\Imports\AffectationsImport;
+use App\Services\ContratService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProfessionnelRHController extends Controller
 {
@@ -140,7 +143,6 @@ class ProfessionnelRHController extends Controller
 
         $candidature = Candidature::findOrFail($candidatureId);
 
-        // Vérifier que la candidature est acceptée
         if ($candidature->statut !== 'accepté') {
             return redirect()->back()->with('error', 'Seules les candidatures acceptées peuvent être affectées.');
         }
@@ -166,33 +168,14 @@ class ProfessionnelRHController extends Controller
             ]);
         }
 
-        Notification::create([
-            'personne_id' => $candidature->personne_id,
-            'message' => "Vous avez été affecté(e) au département '{$request->departement}' avec un salaire proposé de {$request->salaire_propose} DT. Responsable: {$request->responsable_nom}. Veuillez trouver ci-joint votre contrat de travail.",
-            'type' => 'success',
-            'dateEnvoi' => now(),
-            'lu' => false,
-            'fichier' => $this->genererContratPourCandidat($candidature->personne, $candidat),
-        ]);
+        ContratService::genererEtNotifier(
+            $candidature->personne,
+            $candidat,
+            "Vous avez été affecté(e) au département '{$request->departement}' avec un salaire proposé de {$request->salaire_propose} DT. Responsable: {$request->responsable_nom}. Veuillez trouver ci-joint votre contrat de travail.",
+            'success'
+        );
 
         return redirect()->back()->with('success', 'Candidat affecté avec succès, notifié et contrat transmis !');
-    }
-
-    
-    private function genererContratPourCandidat($personne, $candidat): string
-    {
-        $pdf = Pdf::loadView('pdf.contrat', [
-            'personne' => $personne,
-            'departement' => $candidat->affectation,
-            'salaireOffre' => $candidat->salaire_propose,
-            'responsableNom' => $candidat->responsable_nom,
-            'dateAffectation' => \Illuminate\Support\Carbon::parse($candidat->date_affectation)->format('d/m/Y'),
-        ]);
-
-        $nomFichier = 'contrats/contrat_' . $candidat->personne_id . '_' . now()->format('Ymd_His') . '.pdf';
-        Storage::disk('public')->put($nomFichier, $pdf->output());
-
-        return $nomFichier;
     }
 
     
@@ -244,5 +227,48 @@ class ProfessionnelRHController extends Controller
         $candidature->delete();
 
         return redirect()->back()->with('success', 'Dossier supprimé avec succès.');
+    }
+
+
+    public function exporterAffectations()
+    {
+        return Excel::download(new AffectationsExport(), 'affectations_employes.xlsx');
+    }
+
+    public function importerAffectations(Request $request)
+    {
+        $request->validate([
+            'fichier_affectations' => 'required|file|mimes:xlsx,xls,csv',
+        ]);
+
+        $import = new AffectationsImport();
+        Excel::import($import, $request->file('fichier_affectations'));
+
+        $misesAJour = $import->getMisesAJour();
+        $ignorees = $import->getLignesIgnorees();
+
+        $message = $misesAJour . ' employé(s) mis à jour avec succès.';
+        if (! empty($ignorees)) {
+            $message .= ' Lignes ignorées (ID introuvable) : ' . implode(', ', $ignorees) . '.';
+        }
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    public function renvoyerContrat($personneId)
+    {
+        $candidat = Candidat::with('personne')->where('personne_id', $personneId)->firstOrFail();
+
+        ContratService::genererEtNotifier(
+            $candidat->personne,
+            $candidat,
+            "Voici à nouveau votre contrat de travail (département : {$candidat->affectation}, responsable : {$candidat->responsable_nom}).",
+            'info'
+        );
+
+        return redirect()->back()->with(
+            'success',
+            'Contrat renvoyé à ' . ($candidat->personne->prenom ?? '') . ' ' . ($candidat->personne->nom ?? '') . '.'
+        );
     }
 }

@@ -14,7 +14,7 @@ return new class extends Migration
         $table->string('prenom');
         $table->string('email')->unique();
         $table->string('password');
-        $table->enum('role', ['manager', 'candidat', 'rh']);
+        $table->enum('role', ['manager', 'candidat', 'rh', 'admin']);
         $table->string('departement')->nullable();
         $table->timestamps();
     });

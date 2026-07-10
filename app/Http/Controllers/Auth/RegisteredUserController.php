@@ -23,7 +23,8 @@ class RegisteredUserController extends Controller
             'nom'    => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'email'  => 'required|email|unique:personnes,email',
-            'role'   => 'required|in:manager,candidat,rh',
+            // TODO: retirer 'admin' de cette liste une fois le compte admin créé.
+            'role'   => 'required|in:manager,candidat,rh,admin',
         ];
 
         if ($request->role === 'manager') {
@@ -65,6 +66,11 @@ class RegisteredUserController extends Controller
         if ($personne->role === 'rh') {
             Auth::login($personne);
             return redirect()->route('rh.dashboard');
+        }
+
+        if ($personne->role === 'admin') {
+            Auth::login($personne);
+            return redirect()->route('admin.dashboard');
         }
     }
 }

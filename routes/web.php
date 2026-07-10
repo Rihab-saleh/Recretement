@@ -70,7 +70,9 @@ Route::middleware('auth')->group(function () {
     // Affectation administrative (RH)
     Route::post('/rh/candidatures/{id}/affecter', [ProfessionnelRHController::class, 'affecter'])->name('rh.candidatures.affecter');
     Route::delete('/rh/candidatures/{id}/supprimer', [ProfessionnelRHController::class, 'supprimer'])->name('rh.candidatures.supprimer');
-
+    Route::get('/rh/affectations/export', [ProfessionnelRHController::class, 'exporterAffectations'])->name('rh.affectations.export');
+    Route::post('/rh/affectations/import', [ProfessionnelRHController::class, 'importerAffectations'])->name('rh.affectations.import');
+    Route::post('/rh/affectations/{personneId}/renvoyer-contrat', [ProfessionnelRHController::class, 'renvoyerContrat'])->name('rh.affectations.renvoyer-contrat');
     // Calendrier global des employés (RH) : pointages + congés du mois, et export Excel
     Route::get('/rh/calendrier', [RhCalendrierController::class, 'index'])->name('rh.calendrier');
     Route::get('/rh/calendrier/export', [RhCalendrierController::class, 'export'])->name('rh.calendrier.export');
@@ -81,6 +83,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/rh/paiement/{personneId}/generer', [FichePaieController::class, 'generer'])->name('rh.paiement.generer');
     Route::post('/rh/paiement/generer-tout', [FichePaieController::class, 'genererTout'])->name('rh.paiement.generer-tout');
     Route::get('/fiche-paie/{fichePaie}/telecharger', [FichePaieController::class, 'telecharger'])->name('fiche-paie.telecharger');
+    Route::resource('personnes', \App\Http\Controllers\PersonneController::class);
+    Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
+    Route::get('/admin/departements/{departement}', [DashboardController::class, 'departementEmployes'])->name('admin.departement.employes');
 });
 
 require __DIR__ . '/auth.php';

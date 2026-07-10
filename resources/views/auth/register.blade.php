@@ -51,9 +51,9 @@
                         class="w-full border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="">-- Choisir un rôle --</option>
-                        <option value="manager"  {{ old('role') == 'manager'  ? 'selected' : '' }}>Manager</option>
                         <option value="candidat" {{ old('role') == 'candidat' ? 'selected' : '' }}>Candidat</option>
                         <option value="rh"       {{ old('role') == 'rh'       ? 'selected' : '' }}>Professionnel RH</option>
+                        <option value="admin"    {{ old('role') == 'admin'    ? 'selected' : '' }}>Admin</option>
                     </select>
                     @error('role') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>

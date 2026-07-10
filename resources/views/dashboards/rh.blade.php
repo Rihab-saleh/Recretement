@@ -1,7 +1,6 @@
 <x-app-shell>
     <div class="max-w-7xl mx-auto px-6 py-8">
 
-        {{-- Letterhead --}}
         <div class="mb-10 relative overflow-hidden rounded-2xl bg-[#13224B] text-[#F1F5FB] px-8 py-10 shadow-xl shadow-black/10">
             <div class="absolute inset-x-8 top-6 h-px bg-[#60A5FA]/40"></div>
             <p class="text-[11px] uppercase tracking-[0.25em] text-[#60A5FA] font-mono mb-4">
@@ -130,10 +129,31 @@
         </div>
 
         {{-- Liste des candidats affectés --}}
-        <div class="mb-4 flex items-end justify-between border-b border-[#DCE6F5] pb-3">
-            <h2 class="font-serif text-2xl font-semibold text-[#13224B]">Candidats affectés</h2>
-            <span class="text-xs font-mono uppercase tracking-wide text-[#64748B]">{{ $affectes }} employé(s) intégré(s)</span>
+        <div class="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-[#DCE6F5] pb-3">
+            <div>
+                <h2 class="font-serif text-2xl font-semibold text-[#13224B]">Candidats affectés</h2>
+                <span class="text-xs font-mono uppercase tracking-wide text-[#64748B]">{{ $affectes }} employé(s) intégré(s)</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <a href="{{ route('rh.affectations.export') }}"
+                   class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow transition">
+                    ⭳ Exporter en Excel
+                </a>
+
+                <form method="POST" action="{{ route('rh.affectations.import') }}" enctype="multipart/form-data"
+                      class="flex items-center gap-2">
+                    @csrf
+                    <input type="file" name="fichier_affectations" accept=".xlsx,.xls,.csv" required
+                           class="text-xs font-mono text-[#64748B] file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-[#DBEAFE] file:text-[#1D4ED8] file:text-xs file:font-semibold hover:file:bg-[#c7ddfb]">
+                    <button type="submit"
+                            class="px-4 py-2 rounded-lg bg-[#1D4ED8] text-white text-sm font-semibold hover:bg-[#1741B8] shadow transition whitespace-nowrap">
+                        ⭱ Importer les modifications
+                    </button>
+                </form>
+            </div>
         </div>
+       
 
         <div class="mt-5">
             @forelse($candidatsAffectes as $candidature)
@@ -182,6 +202,24 @@
                                 <p class="font-medium text-[#13224B] mt-0.5">{{ $c?->responsable_nom ?? '—' }}</p>
                             </div>
                         </div>
+
+                        @if($c)
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                                @if($c->contrat_url)
+                                    <a href="{{ $c->contrat_url }}" target="_blank"
+                                       class="px-3 py-2 rounded-lg bg-[#1D4ED8] text-white text-xs font-semibold hover:bg-[#1741B8] shadow-sm transition whitespace-nowrap text-center">
+                                        📄 Voir le contrat
+                                    </a>
+                                @endif
+                                <form method="POST" action="{{ route('rh.affectations.renvoyer-contrat', $c->personne_id) }}">
+                                    @csrf
+                                    <button type="submit"
+                                            class="w-full px-3 py-2 rounded-lg bg-white border border-[#1D4ED8] text-[#1D4ED8] text-xs font-semibold hover:bg-[#DBEAFE] shadow-sm transition whitespace-nowrap">
+                                        ⭱ Renvoyer le contrat
+                                    </button>
+                                </form>
+                            </div>
+                        @endif
                     </div>
                 </div>
             @empty

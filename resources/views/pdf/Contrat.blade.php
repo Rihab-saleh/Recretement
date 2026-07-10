@@ -68,13 +68,10 @@
                 <td class="label">Date de prise de fonction</td>
                 <td>{{ $dateAffectation }}</td>
             </tr>
-            <tr>
-                <td class="label">Type de salaire</td>
-                <td>{{ $typeSalaire === 'journalier' ? 'Journalier' : 'Mensuel' }}</td>
-            </tr>
+            
             <tr>
                 <td class="label">Salaire proposé</td>
-                <td>{{ number_format($salaireOffre, 2) }} DT {{ $typeSalaire === 'journalier' ? '/ jour' : '/ mois' }}</td>
+                <td>{{ number_format($salaireOffre, 2) }} DT</td>
             </tr>
             <tr>
                 <td class="label">Responsable direct</td>

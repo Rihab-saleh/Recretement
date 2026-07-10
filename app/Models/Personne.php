@@ -72,6 +72,10 @@ class Personne extends Authenticatable
         return $this->hasMany(Offre::class, 'personne_id');
     }
 
+      public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
     public function conges()
     {
         return $this->hasMany(Conge::class, 'personne_id');

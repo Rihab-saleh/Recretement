@@ -4,8 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Offre;
 use App\Models\Candidature;
+use App\Models\Candidat;
+use App\Models\Personne;
+use App\Models\FichePaie;
 use App\Models\Pointage;
+use App\Models\Notification;
+use App\Services\ContratService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class DashboardController extends Controller
 {
@@ -103,8 +109,95 @@ class DashboardController extends Controller
             ->latest()
             ->get();
 
+        foreach ($candidatsAffectes as $candidature) {
+            $c = $candidature->personne?->candidat;
+
+            if ($c) {
+                $fichierContrat = ContratService::dernierContratExistant($c->personne_id);
+
+                // Certains employés ont été affectés avant l'ajout de la génération
+                // automatique du contrat (colonne "fichier"/notification). Plutôt que
+                // d'exiger un clic sur "Renvoyer le contrat" pour que le bouton "Voir
+                // le contrat" apparaisse, on génère ce contrat manquant à la volée.
+                if (! $fichierContrat) {
+                    $fichierContrat = ContratService::genererEtNotifier(
+                        $c->personne,
+                        $c,
+                        "Voici votre contrat de travail (département : {$c->affectation}, responsable : {$c->responsable_nom}).",
+                        'info'
+                    );
+                }
+
+                $c->contrat_url = Storage::url($fichierContrat);
+            }
+        }
+
         $affectes = $candidatsAffectes->count();
 
         return view('dashboards.rh', compact('enAttente', 'affectes', 'candidatsAffectes', 'candidatsEnAttente'));
+    }
+
+    /**
+     * Vue d'ensemble globale de l'entreprise, à destination de l'administrateur :
+     * effectifs par rôle, activité de recrutement, masse salariale du mois en cours.
+     */
+    public function admin()
+    {
+        $effectifs = [
+            'managers' => Personne::where('role', 'manager')->count(),
+            'rh' => Personne::where('role', 'rh')->count(),
+            'candidats' => Personne::where('role', 'candidat')->count(),
+            'employes' => Candidat::where('statutCandidature', 'affecté')->count(),
+        ];
+
+        $offresOuvertes = Offre::where('statut', 'ouvert')->count();
+        $offresFermees = Offre::where('statut', '!=', 'ouvert')->count();
+        $candidaturesEnAttente = Candidature::where('statut', 'en_attente')->count();
+
+        $mois = now()->month;
+        $annee = now()->year;
+
+        $fichesDuMois = FichePaie::where('mois', $mois)->where('annee', $annee)->get();
+        $masseSalariale = $fichesDuMois->sum('salaireNet');
+        $bulletinsGeneres = $fichesDuMois->count();
+
+        $derniersEmployesAffectes = Candidat::with('personne')
+            ->where('statutCandidature', 'affecté')
+            ->latest('date_affectation')
+            ->limit(6)
+            ->get();
+
+        $departements = Candidat::where('statutCandidature', 'affecté')
+            ->whereNotNull('affectation')
+            ->selectRaw('affectation, count(*) as total')
+            ->groupBy('affectation')
+            ->orderByDesc('total')
+            ->get();
+
+        $personnes = Personne::orderBy('role')->orderBy('nom')->get();
+
+        return view('dashboards.admin', compact(
+            'effectifs',
+            'offresOuvertes',
+            'offresFermees',
+            'candidaturesEnAttente',
+            'masseSalariale',
+            'bulletinsGeneres',
+            'mois',
+            'annee',
+            'derniersEmployesAffectes',
+            'departements',
+            'personnes'
+        ));
+    }
+
+    public function departementEmployes(string $departement)
+    {
+        $employes = Candidat::with('personne')
+            ->where('statutCandidature', 'affecté')
+            ->where('affectation', $departement)
+            ->get();
+
+        return view('dashboards.admin-departement', compact('departement', 'employes'));
     }
 }

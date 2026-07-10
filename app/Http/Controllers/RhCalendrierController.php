@@ -13,12 +13,6 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class RhCalendrierController extends Controller
 {
-    /**
-     * Affiche un calendrier unique avec tous les employés affectés à un
-     * département (une ligne par employé, une colonne par jour du mois).
-     * Chaque employé n'apparaît qu'à partir du jour où il a été affecté
-     * (champ `date_affectation` du dossier candidat).
-     */
     public function index(Request $request)
     {
         $mois = (int) $request->query('mois', now()->month);
@@ -79,7 +73,6 @@ class RhCalendrierController extends Controller
             for ($jour = $debutMois->copy(); $jour->lessThanOrEqualTo($finMois); $jour->addDay()) {
                 $dateStr = $jour->toDateString();
 
-                // Jour avant l'affectation au département : l'employé n'était pas encore en poste
                 if ($dateAffectation && $jour->lessThan($dateAffectation)) {
                     $statutsParJour[$dateStr] = ['statut' => 'avant_affectation'];
                     continue;
@@ -138,9 +131,7 @@ class RhCalendrierController extends Controller
         ]);
     }
 
-    /**
-     * Télécharge le fichier Excel des pointages/congés du mois affiché.
-     */
+    
     public function export(Request $request)
     {
         $mois = (int) $request->query('mois', now()->month);

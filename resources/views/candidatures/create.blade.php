@@ -31,6 +31,9 @@
                     <label for="telephone" class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
                     <input id="telephone" type="text" name="telephone"
                         value="{{ old('telephone') }}" required autocomplete="tel"
+                        inputmode="numeric" pattern="[0-9]+" maxlength="20"
+                        title="Le numéro de téléphone ne doit contenir que des chiffres."
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                         class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     @error('telephone') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>

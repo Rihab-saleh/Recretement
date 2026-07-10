@@ -21,30 +21,32 @@ class PersonneController extends Controller
 
     public function store(Request $request)
     {
+        // Le RH crée déjà les comptes RH/candidat via le processus de recrutement/inscription ;
+        // l'admin ne crée depuis cette page QUE des comptes manager.
         $request->validate(
             array_merge(
                 [
-                    'nom'    => 'required|string|max:255',
-                    'prenom' => 'required|string|max:255',
-                    'email'  => 'required|email|unique:personnes,email',
-                    'role'   => 'required|in:manager,candidat,rh',
+                    'nom'         => 'required|string|max:255',
+                    'prenom'      => 'required|string|max:255',
+                    'email'       => 'required|email|unique:personnes,email',
+                    'departement' => 'required|string|max:255',
                 ],
                 Personne::passwordRules()
             ),
             Personne::passwordMessages()
         );
 
-        $personne = Personne::create([
-    'nom'         => $request->nom,
-    'prenom'      => $request->prenom,
-    'email'       => $request->email,
-    'password'    => Hash::make($request->password),
-    'role'        => $request->role,
-    'departement' => $request->role === 'manager' ? $request->departement : null,
-]);
+        Personne::create([
+            'nom'         => $request->nom,
+            'prenom'      => $request->prenom,
+            'email'       => $request->email,
+            'password'    => Hash::make($request->password),
+            'role'        => 'manager',
+            'departement' => $request->departement,
+        ]);
 
-        return redirect()->route('personnes.index')
-                         ->with('success', 'Personne créée avec succès.');
+        return redirect()->route('admin.dashboard')
+                         ->with('success', 'Manager créé avec succès.');
     }
 
     public function show($id)
@@ -59,46 +61,34 @@ class PersonneController extends Controller
         return view('personnes.edit', compact('personne'));
     }
 
+    /**
+     * Modification désactivée : depuis cette page, l'admin peut seulement créer
+     * ou supprimer des comptes manager, pas les modifier ni toucher aux autres rôles.
+     */
     public function update(Request $request, $id)
     {
-        $personne = Personne::findOrFail($id);
-
-        $rules = [
-            'nom'    => 'required|string|max:255',
-            'prenom' => 'required|string|max:255',
-            'email'  => 'required|email|unique:personnes,email,' . $id,
-            'role'   => 'required|in:manager,candidat,rh',
-        ];
-
-        if ($request->filled('password')) {
-            $rules = array_merge($rules, Personne::passwordRules());
-        }
-
-        $request->validate($rules, Personne::passwordMessages());
-
-        $data = [
-            'nom'    => $request->nom,
-            'prenom' => $request->prenom,
-            'email'  => $request->email,
-            'role'   => $request->role,
-        ];
-
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
-        }
-
-        $personne->update($data);
-
-        return redirect()->route('personnes.index')
-                         ->with('success', 'Personne mise à jour avec succès.');
+        abort(403, "La modification de compte n'est pas autorisée depuis cette page.");
     }
 
     public function destroy($id)
     {
         $personne = Personne::findOrFail($id);
+
+        if ($personne->id === auth()->id()) {
+            return redirect()->route('admin.dashboard')
+                             ->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+
+        // L'admin ne peut supprimer que des comptes manager (RH/candidat/admin sont protégés
+        // depuis cette page, même si l'ID est deviné/forcé dans l'URL).
+        if ($personne->role !== 'manager') {
+            return redirect()->route('admin.dashboard')
+                             ->with('error', "Seuls les comptes manager peuvent être supprimés depuis cette page.");
+        }
+
         $personne->delete();
 
-        return redirect()->route('personnes.index')
-                         ->with('success', 'Personne supprimée avec succès.');
+        return redirect()->route('admin.dashboard')
+                         ->with('success', 'Manager supprimé avec succès.');
     }
 }

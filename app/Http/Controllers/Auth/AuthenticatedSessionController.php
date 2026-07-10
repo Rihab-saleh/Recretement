@@ -30,6 +30,11 @@ class AuthenticatedSessionController extends Controller
         if ($personne->isRH()) {
             return redirect()->route('rh.dashboard');
         }
+        if ($personne->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        return redirect('/');
     }
 
     public function destroy(Request $request)
