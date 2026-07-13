@@ -35,13 +35,16 @@
 <body>
 
     <div class="titre">
+        @if($entreprise?->logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($entreprise->logo))
+            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->path($entreprise->logo) }}" style="height:40px; margin-bottom:8px;">
+        @endif
         <h1>CONTRAT DE TRAVAIL</h1>
-        <div class="sous-titre">{{ config('app.name', 'Entreprise') }}</div>
+        <div class="sous-titre">{{ $entreprise->nom ?? config('app.name', 'Entreprise') }}</div>
     </div>
 
     <div class="bloc">
         <h2>Entre les soussignés</h2>
-        <div class="ligne"><strong>L'employeur :</strong> {{ config('', 'Entreprise') }}</div>
+        <div class="ligne"><strong>L'employeur :</strong> {{ $entreprise->nom ?? config('app.name', 'Entreprise') }}</div>
         <div class="ligne"><strong>Représenté par :</strong> {{ $responsableNom }}</div>
     </div>
 
@@ -53,7 +56,7 @@
 
     <div class="paragraphe">
         Il a été convenu et arrêté ce qui suit : le salarié est engagé au sein de l'entreprise
-        {{ config('app.name', 'Entreprise') }} à compter du <strong>{{ $dateAffectation }}</strong>, aux
+        {{ $entreprise->nom ?? config('app.name', 'Entreprise') }} à compter du <strong>{{ $dateAffectation }}</strong>, aux
         conditions décrites ci-dessous.
     </div>
 
@@ -94,7 +97,7 @@
     </table>
 
     <div class="footer-doc">
-        Document généré automatiquement le {{ now()->format('d/m/Y') }} — {{ config('app.name', 'Entreprise') }}
+        Document généré automatiquement le {{ now()->format('d/m/Y') }} — {{ $entreprise->nom ?? config('app.name', 'Entreprise') }}
     </div>
 
 </body>

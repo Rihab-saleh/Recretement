@@ -21,6 +21,9 @@ class AuthenticatedSessionController extends Controller
 
         $personne = Auth::user();
 
+        if ($personne->isSuperAdmin()) {
+            return redirect()->route('super-admin.dashboard');
+        }
         if ($personne->isManager()) {
             return redirect()->route('manager.dashboard');
         }

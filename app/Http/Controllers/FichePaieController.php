@@ -10,6 +10,7 @@ use App\Models\Pointage;
 use App\Exports\FichePaieExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
@@ -238,6 +239,10 @@ class FichePaieController extends Controller
      */
     public function generer(Request $request, $personneId)
     {
+        // Protection serveur : l'admin ne peut pas générer/régénérer un bulletin, même en
+        // forçant la requête directement (la vue ne fait que masquer le bouton).
+        abort_if(Auth::user()?->isAdmin(), 403, "L'administrateur ne peut pas générer ni envoyer les bulletins de paie.");
+
         $mois = (int) $request->input('mois', now()->month);
         $annee = (int) $request->input('annee', now()->year);
         $pourcentages = $this->pourcentages($request);
@@ -257,6 +262,9 @@ class FichePaieController extends Controller
      */
     public function genererTout(Request $request)
     {
+        // Protection serveur : idem, l'admin ne peut pas déclencher l'envoi groupé des bulletins.
+        abort_if(Auth::user()?->isAdmin(), 403, "L'administrateur ne peut pas générer ni envoyer les bulletins de paie.");
+
         $mois = (int) $request->input('mois', now()->month);
         $annee = (int) $request->input('annee', now()->year);
         $pourcentages = $this->pourcentages($request);

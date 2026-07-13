@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Candidat;
+use App\Models\Entreprise;
 use App\Models\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -15,7 +16,7 @@ class ContratService
      * sur le disque "public" (storage/app/public/contrats/...). Seul le CHEMIN
      * du fichier est destiné à être enregistré en base (jamais le PDF lui-même).
      */
-    public static function genererPdf($personne, Candidat $candidat): string
+    public static function genererPdf($personne, Candidat $candidat, ?Entreprise $entreprise = null): string
     {
         $pdf = Pdf::loadView('pdf.contrat', [
             'personne' => $personne,
@@ -23,12 +24,28 @@ class ContratService
             'salaireOffre' => $candidat->salaire_propose,
             'responsableNom' => $candidat->responsable_nom,
             'dateAffectation' => Carbon::parse($candidat->date_affectation)->format('d/m/Y'),
+            'entreprise' => $entreprise,
         ]);
 
         $nomFichier = 'contrats/contrat_' . $candidat->personne_id . '_' . now()->format('Ymd_His') . '.pdf';
         Storage::disk('public')->put($nomFichier, $pdf->output());
 
         return $nomFichier;
+    }
+
+    /**
+     * Retourne l'entreprise qui a recruté ce candidat, déduite de sa
+     * candidature acceptée (candidature -> offre -> manager -> entreprise).
+     */
+    public static function entrepriseDuCandidat(int $personneId): ?Entreprise
+    {
+        $candidature = \App\Models\Candidature::where('personne_id', $personneId)
+            ->where('statut', 'accepté')
+            ->with('offre.personne.entreprise')
+            ->latest()
+            ->first();
+
+        return $candidature?->offre?->personne?->entreprise;
     }
 
     /**
@@ -50,9 +67,9 @@ class ContratService
      * Génère un contrat pour le candidat et crée la notification associée.
      * Utilisé aussi bien pour l'envoi initial que pour un renvoi manuel.
      */
-    public static function genererEtNotifier($personne, Candidat $candidat, string $message, string $type = 'info'): string
+    public static function genererEtNotifier($personne, Candidat $candidat, string $message, string $type = 'info', ?Entreprise $entreprise = null): string
     {
-        $fichier = self::genererPdf($personne, $candidat);
+        $fichier = self::genererPdf($personne, $candidat, $entreprise);
 
         Notification::create([
             'personne_id' => $candidat->personne_id,

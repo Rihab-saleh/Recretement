@@ -18,6 +18,7 @@ class Personne extends Authenticatable
         'departement',
         'password',
         'role',
+        'entreprise_id',
     ];
 
     protected $hidden = [
@@ -76,6 +77,17 @@ class Personne extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    public function entreprise()
+    {
+        return $this->belongsTo(Entreprise::class);
+    }
+
     public function conges()
     {
         return $this->hasMany(Conge::class, 'personne_id');
@@ -99,5 +111,10 @@ class Personne extends Authenticatable
     public function fichePaies()
     {
         return $this->hasMany(FichePaie::class, 'personne_id');
+    }
+
+    public function evaluations()
+    {
+        return $this->hasMany(Evaluation::class, 'personne_id');
     }
 }

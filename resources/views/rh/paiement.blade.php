@@ -111,17 +111,21 @@
                                                 📄 Télécharger
                                             </a>
                                         @endif
-                                        <form method="POST" action="{{ route('rh.paiement.generer', $b['candidat']->personne_id) }}">
-                                            @csrf
-                                            <input type="hidden" name="mois" value="{{ $mois }}">
-                                            <input type="hidden" name="annee" value="{{ $annee }}">
-                                            <input type="hidden" name="pourcentage_absence" value="{{ $pourcentages['absence'] }}">
-                                            <input type="hidden" name="pourcentage_retard" value="{{ $pourcentages['retard'] }}">
-                                            <input type="hidden" name="pourcentage_cnss" value="{{ $pourcentages['cnss'] }}">
-                                            <button type="submit" class="px-3 py-1.5 {{ $ficheExistante ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-indigo-600 text-white hover:bg-indigo-700' }} rounded-lg text-xs font-medium transition whitespace-nowrap">
-                                                {{ $ficheExistante ? '↻ Régénérer' : '📄 Générer le bulletin' }}
-                                            </button>
-                                        </form>
+                                        @if(! Auth::user()->isAdmin())
+                                            <form method="POST" action="{{ route('rh.paiement.generer', $b['candidat']->personne_id) }}">
+                                                @csrf
+                                                <input type="hidden" name="mois" value="{{ $mois }}">
+                                                <input type="hidden" name="annee" value="{{ $annee }}">
+                                                <input type="hidden" name="pourcentage_absence" value="{{ $pourcentages['absence'] }}">
+                                                <input type="hidden" name="pourcentage_retard" value="{{ $pourcentages['retard'] }}">
+                                                <input type="hidden" name="pourcentage_cnss" value="{{ $pourcentages['cnss'] }}">
+                                                <button type="submit" class="px-3 py-1.5 {{ $ficheExistante ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-indigo-600 text-white hover:bg-indigo-700' }} rounded-lg text-xs font-medium transition whitespace-nowrap">
+                                                    {{ $ficheExistante ? '↻ Régénérer' : '📄 Générer le bulletin' }}
+                                                </button>
+                                            </form>
+                                        @elseif(! $ficheExistante)
+                                            <span class="px-3 py-1.5 text-xs font-mono text-gray-400 italic whitespace-nowrap">Non généré</span>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -130,18 +134,20 @@
                 </table>
             </div>
 
-            <form method="POST" action="{{ route('rh.paiement.generer-tout') }}"
-                  onsubmit="return confirm('Générer et envoyer le bulletin de paie de tous les employés affichés ?');">
-                @csrf
-                <input type="hidden" name="mois" value="{{ $mois }}">
-                <input type="hidden" name="annee" value="{{ $annee }}">
-                <input type="hidden" name="pourcentage_absence" value="{{ $pourcentages['absence'] }}">
-                <input type="hidden" name="pourcentage_retard" value="{{ $pourcentages['retard'] }}">
-                <input type="hidden" name="pourcentage_cnss" value="{{ $pourcentages['cnss'] }}">
-                <button type="submit" class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow">
-                    📄 Générer et envoyer tous les bulletins de {{ $titreMois }}
-                </button>
-            </form>
+            @if(! Auth::user()->isAdmin())
+                <form method="POST" action="{{ route('rh.paiement.generer-tout') }}"
+                      onsubmit="return confirm('Générer et envoyer le bulletin de paie de tous les employés affichés ?');">
+                    @csrf
+                    <input type="hidden" name="mois" value="{{ $mois }}">
+                    <input type="hidden" name="annee" value="{{ $annee }}">
+                    <input type="hidden" name="pourcentage_absence" value="{{ $pourcentages['absence'] }}">
+                    <input type="hidden" name="pourcentage_retard" value="{{ $pourcentages['retard'] }}">
+                    <input type="hidden" name="pourcentage_cnss" value="{{ $pourcentages['cnss'] }}">
+                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow">
+                        📄 Générer et envoyer tous les bulletins de {{ $titreMois }}
+                    </button>
+                </form>
+            @endif
         @endif
     </div>
 </x-app-shell>

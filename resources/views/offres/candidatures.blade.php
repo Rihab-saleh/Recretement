@@ -55,7 +55,6 @@
                                     </button>
                                 </div>
 
-                                {{-- Panneau de refus avec note obligatoire --}}
                                 <div x-show="showRefus" x-cloak x-transition class="mt-2">
                                     <form method="POST" action="{{ route('candidatures.decider', $candidature->id) }}"
                                         class="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
@@ -78,7 +77,6 @@
                                     </form>
                                 </div>
 
-                                {{-- Motif déjà enregistré --}}
                                 @if($candidature->statut === 'refusé' && $candidature->note_refus)
                                     <p class="text-xs text-red-600 mt-1 italic">
                                         Motif enregistré : {{ $candidature->note_refus }}

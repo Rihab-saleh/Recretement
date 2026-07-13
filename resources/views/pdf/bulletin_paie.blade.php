@@ -195,7 +195,6 @@
         </tbody>
     </table>
 
-    {{-- Montant net social (= salaire gagné, déjà net de CNSS, avant les autres retenues) --}}
     <table class="ligne-resume">
         <tr>
             <td class="libelle">SALAIRE NET (après CNSS, avant absences / congés / retard)</td>
@@ -203,7 +202,6 @@
         </tr>
     </table>
 
-    {{-- Net à payer final --}}
     <table class="net-a-payer">
         <tr>
             <td class="libelle">NET À PAYER AU SALARIÉ</td>
@@ -211,7 +209,6 @@
         </tr>
     </table>
 
-    {{-- Bas de page : congés + récapitulatif pointage --}}
     <table class="bas-page">
         <tr>
             <td class="cadre-bas">

@@ -6,6 +6,7 @@ use App\Models\Offre;
 use App\Models\Candidature;
 use App\Models\Candidat;
 use App\Models\Personne;
+use App\Models\Entreprise;
 use App\Models\FichePaie;
 use App\Models\Pointage;
 use App\Models\Notification;
@@ -20,13 +21,11 @@ class DashboardController extends Controller
         $personne = Auth::user();
         $departement = $personne?->departement ?? 'Non défini';
 
-        $offres = Offre::where('personne_id', Auth::id())
-            ->get();
+        $offres = Offre::where('personne_id', Auth::id())->get();
 
         foreach ($offres as $offre) {
             $offre->fermerSiNecessaire();
 
-            
             $offre->candidatures_count = Candidature::where('offre_id', $offre->id)
                 ->where('statut', 'en_attente')
                 ->where('valide_rh', true)
@@ -46,9 +45,7 @@ class DashboardController extends Controller
 
     public function candidat()
     {
-        $candidatures = Candidature::where('personne_id', Auth::id())
-            ->with('offre')
-            ->get();
+        $candidatures = Candidature::where('personne_id', Auth::id())->with('offre')->get();
 
         $appliedOfferIds = $candidatures->pluck('offre_id')->all();
         $estAccepte = $candidatures->where('statut', 'accepté')->count() > 0;
@@ -57,6 +54,7 @@ class DashboardController extends Controller
             $offres = collect();
         } else {
             $offres = Offre::where('statut', 'ouvert')
+                ->with('personne.entreprise')
                 ->when(!empty($appliedOfferIds), function ($query) use ($appliedOfferIds) {
                     return $query->whereNotIn('id', $appliedOfferIds);
                 })
@@ -101,7 +99,7 @@ class DashboardController extends Controller
 
         $enAttente = $candidatsEnAttente->count();
 
-        $candidatsAffectes = Candidature::with(['personne.candidat', 'offre'])
+        $candidatsAffectes = Candidature::with(['personne.candidat', 'offre.personne.entreprise'])
             ->where('statut', 'accepté')
             ->whereHas('personne.candidat', function ($q) {
                 $q->where('statutCandidature', 'affecté');
@@ -115,16 +113,13 @@ class DashboardController extends Controller
             if ($c) {
                 $fichierContrat = ContratService::dernierContratExistant($c->personne_id);
 
-                // Certains employés ont été affectés avant l'ajout de la génération
-                // automatique du contrat (colonne "fichier"/notification). Plutôt que
-                // d'exiger un clic sur "Renvoyer le contrat" pour que le bouton "Voir
-                // le contrat" apparaisse, on génère ce contrat manquant à la volée.
                 if (! $fichierContrat) {
                     $fichierContrat = ContratService::genererEtNotifier(
                         $c->personne,
                         $c,
                         "Voici votre contrat de travail (département : {$c->affectation}, responsable : {$c->responsable_nom}).",
-                        'info'
+                        'info',
+                        $candidature->offre?->personne?->entreprise
                     );
                 }
 
@@ -137,46 +132,84 @@ class DashboardController extends Controller
         return view('dashboards.rh', compact('enAttente', 'affectes', 'candidatsAffectes', 'candidatsEnAttente'));
     }
 
-    /**
-     * Vue d'ensemble globale de l'entreprise, à destination de l'administrateur :
-     * effectifs par rôle, activité de recrutement, masse salariale du mois en cours.
-     */
     public function admin()
     {
+        $entrepriseId = Auth::user()->entreprise_id;
+        $entreprise = Auth::user()->entreprise;
+
+        $personnesEntreprise = Personne::where('entreprise_id', $entrepriseId);
+
         $effectifs = [
-            'managers' => Personne::where('role', 'manager')->count(),
-            'rh' => Personne::where('role', 'rh')->count(),
-            'candidats' => Personne::where('role', 'candidat')->count(),
-            'employes' => Candidat::where('statutCandidature', 'affecté')->count(),
+            'managers'   => (clone $personnesEntreprise)->where('role', 'manager')->count(),
+            'rh'         => (clone $personnesEntreprise)->where('role', 'rh')->count(),
+            'candidats'  => (clone $personnesEntreprise)->where('role', 'candidat')->count(),
+            'employes'   => Candidat::whereHas('personne', function ($q) use ($entrepriseId) {
+                    $q->where('entreprise_id', $entrepriseId);
+                })
+                ->where('statutCandidature', 'affecté')
+                ->count(),
         ];
 
-        $offresOuvertes = Offre::where('statut', 'ouvert')->count();
-        $offresFermees = Offre::where('statut', '!=', 'ouvert')->count();
-        $candidaturesEnAttente = Candidature::where('statut', 'en_attente')->count();
+        $offresEntreprise = Offre::whereHas('personne', function ($q) use ($entrepriseId) {
+            $q->where('entreprise_id', $entrepriseId);
+        });
+
+        $offresOuvertes = (clone $offresEntreprise)->where('statut', 'ouvert')->count();
+        $offresFermees = (clone $offresEntreprise)->where('statut', '!=', 'ouvert')->count();
+
+        $candidaturesEnAttente = Candidature::where('statut', 'en_attente')
+            ->whereHas('offre.personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
+            ->count();
 
         $mois = now()->month;
         $annee = now()->year;
 
-        $fichesDuMois = FichePaie::where('mois', $mois)->where('annee', $annee)->get();
+        $fichesDuMois = FichePaie::where('mois', $mois)
+            ->where('annee', $annee)
+            ->whereHas('personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
+            ->get();
         $masseSalariale = $fichesDuMois->sum('salaireNet');
         $bulletinsGeneres = $fichesDuMois->count();
 
         $derniersEmployesAffectes = Candidat::with('personne')
+            ->whereHas('personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
             ->where('statutCandidature', 'affecté')
             ->latest('date_affectation')
             ->limit(6)
             ->get();
 
-        $departements = Candidat::where('statutCandidature', 'affecté')
+        $departements = Candidat::whereHas('personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
+            ->where('statutCandidature', 'affecté')
             ->whereNotNull('affectation')
             ->selectRaw('affectation, count(*) as total')
             ->groupBy('affectation')
             ->orderByDesc('total')
             ->get();
 
-        $personnes = Personne::orderBy('role')->orderBy('nom')->get();
+        $personnes = Personne::where('entreprise_id', $entrepriseId)
+            ->orderBy('role')
+            ->orderBy('nom')
+            ->get();
+
+        $employesPromouvables = Personne::where('entreprise_id', $entrepriseId)
+            ->where('role', 'candidat')
+            ->whereHas('candidat', function ($q) {
+                $q->where('statutCandidature', 'affecté');
+            })
+            ->with('candidat')
+            ->orderBy('nom')
+            ->get();
 
         return view('dashboards.admin', compact(
+            'entreprise',
             'effectifs',
             'offresOuvertes',
             'offresFermees',
@@ -187,17 +220,42 @@ class DashboardController extends Controller
             'annee',
             'derniersEmployesAffectes',
             'departements',
-            'personnes'
+            'personnes',
+            'employesPromouvables'
         ));
     }
 
     public function departementEmployes(string $departement)
     {
+        $entrepriseId = Auth::user()->entreprise_id;
+
         $employes = Candidat::with('personne')
+            ->whereHas('personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
             ->where('statutCandidature', 'affecté')
             ->where('affectation', $departement)
             ->get();
 
         return view('dashboards.admin-departement', compact('departement', 'employes'));
+    }
+
+    public function superAdmin()
+    {
+        $entreprises = Entreprise::withCount(['managers', 'rh'])
+            ->with(['admins' => function ($q) {
+                $q->select('id', 'nom', 'prenom', 'email', 'entreprise_id');
+            }])
+            ->latest()
+            ->get();
+
+        $totalEntreprises = $entreprises->count();
+        $totalAdmins = Personne::where('role', 'admin')->count();
+        $totalManagers = Personne::where('role', 'manager')->count();
+        $totalRh = Personne::where('role', 'rh')->count();
+
+        return view('dashboards.super-admin', compact(
+            'entreprises', 'totalEntreprises', 'totalAdmins', 'totalManagers', 'totalRh'
+        ));
     }
 }

@@ -36,7 +36,6 @@
             
         </div>
 
-        {{-- Recrutement + Masse salariale --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
 
             <div class="bg-white rounded-2xl border border-[#DCE6F5] shadow-sm p-6">
@@ -75,7 +74,7 @@
             </div>
         </div>
 
-        
+
         <div class="mb-4 flex items-end justify-between border-b border-[#DCE6F5] pb-3">
             <h2 class="font-serif text-2xl font-semibold text-[#13224B]">Répartition par département</h2>
         </div>
@@ -97,7 +96,6 @@
         </div>
 
 
-        {{-- Gestion des comptes --}}
         <div class="mb-4 flex items-end justify-between border-b border-[#DCE6F5] pb-3">
             <h2 class="font-serif text-2xl font-semibold text-[#13224B]">Gestion des comptes</h2>
         </div>
@@ -108,18 +106,24 @@
             </div>
         @endif
 
-        <div class="bg-white rounded-2xl border border-[#DCE6F5] shadow-sm overflow-hidden mb-12" x-data="{ showCreate: false }">
+        <div class="bg-white rounded-2xl border border-[#DCE6F5] shadow-sm overflow-hidden mb-12" x-data="{ showCreate: false, role: 'manager' }">
 
-            {{-- Bouton + formulaire de création (managers uniquement) --}}
             <div class="p-6 border-b border-[#DCE6F5]">
                 <button type="button" @click="showCreate = !showCreate"
                         class="px-4 py-2 rounded-lg bg-[#1D4ED8] text-white text-sm font-semibold hover:bg-[#1741B8] shadow transition">
-                    <span x-text="showCreate ? '− Annuler' : '+ Nouveau manager'"></span>
+                    <span x-text="showCreate ? '− Annuler' : '+ Nouveau compte'"></span>
                 </button>
 
                 <form method="POST" action="{{ route('personnes.store') }}" x-show="showCreate" x-cloak
                       class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     @csrf
+                    <div class="sm:col-span-2">
+                        <label class="text-xs font-mono uppercase tracking-wide text-[#64748B]">Rôle</label>
+                        <select name="role" x-model="role" required class="mt-1 w-full rounded-lg border border-[#DCE6F5] focus:border-[#1D4ED8] focus:ring-[#1D4ED8] text-sm">
+                            <option value="manager">Manager</option>
+                            <option value="rh">RH</option>
+                        </select>
+                    </div>
                     <div>
                         <label class="text-xs font-mono uppercase tracking-wide text-[#64748B]">Nom</label>
                         <input type="text" name="nom" required class="mt-1 w-full rounded-lg border border-[#DCE6F5] focus:border-[#1D4ED8] focus:ring-[#1D4ED8] text-sm">
@@ -132,9 +136,9 @@
                         <label class="text-xs font-mono uppercase tracking-wide text-[#64748B]">Email</label>
                         <input type="email" name="email" required class="mt-1 w-full rounded-lg border border-[#DCE6F5] focus:border-[#1D4ED8] focus:ring-[#1D4ED8] text-sm">
                     </div>
-                    <div>
+                    <div x-show="role === 'manager'" x-cloak>
                         <label class="text-xs font-mono uppercase tracking-wide text-[#64748B]">Département</label>
-                        <input type="text" name="departement" required class="mt-1 w-full rounded-lg border border-[#DCE6F5] focus:border-[#1D4ED8] focus:ring-[#1D4ED8] text-sm">
+                        <input type="text" name="departement" :required="role === 'manager'" class="mt-1 w-full rounded-lg border border-[#DCE6F5] focus:border-[#1D4ED8] focus:ring-[#1D4ED8] text-sm">
                     </div>
                     <div>
                         <label class="text-xs font-mono uppercase tracking-wide text-[#64748B]">Mot de passe</label>
@@ -143,36 +147,41 @@
                     </div>
                     <div class="sm:col-span-2 flex justify-end">
                         <button type="submit" class="px-5 py-2.5 rounded-lg bg-[#1D4ED8] text-white text-sm font-semibold hover:bg-[#1741B8] shadow transition">
-                            Créer le manager
+                            Créer le compte
                         </button>
                     </div>
                 </form>
             </div>
 
-            {{-- Liste des managers déjà existants --}}
             <div class="px-6 py-4 border-b border-[#DCE6F5]">
                 <h3 class="text-xs font-mono uppercase tracking-wide text-[#64748B]">
-                    Managers existants ({{ $personnes->where('role', 'manager')->count() }})
+                    Managers &amp; RH existants ({{ $personnes->whereIn('role', ['manager', 'rh'])->count() }})
                 </h3>
             </div>
             <table class="w-full text-sm">
                 <thead class="bg-[#F5F6FA] text-[#64748B] text-[11px] uppercase tracking-wide font-mono">
                     <tr>
                         <th class="text-left px-6 py-3">Nom</th>
+                        <th class="text-left px-6 py-3">Rôle</th>
                         <th class="text-left px-6 py-3">Email</th>
                         <th class="text-left px-6 py-3">Département</th>
                         <th class="text-right px-6 py-3">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[#F1F5FB]">
-                    @forelse($personnes->where('role', 'manager') as $p)
+                    @forelse($personnes->whereIn('role', ['manager', 'rh']) as $p)
                         <tr class="hover:bg-[#F9FAFC]">
                             <td class="px-6 py-4 font-medium text-[#13224B]">{{ $p->prenom }} {{ $p->nom }}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-0.5 rounded-full text-[11px] font-mono uppercase tracking-wide {{ $p->role === 'rh' ? 'bg-[#DBEAFE] text-[#1D4ED8]' : 'bg-[#F1F5FB] text-[#64748B]' }}">
+                                    {{ $p->role === 'rh' ? 'RH' : 'Manager' }}
+                                </span>
+                            </td>
                             <td class="px-6 py-4 text-[#64748B]">{{ $p->email }}</td>
                             <td class="px-6 py-4 text-[#64748B]">{{ $p->departement ?? '—' }}</td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center justify-end gap-3">
-                                    <form method="POST" action="{{ route('personnes.destroy', $p->id) }}" onsubmit="return confirm('Supprimer ce manager définitivement ?');">
+                                    <form method="POST" action="{{ route('personnes.destroy', $p->id) }}" onsubmit="return confirm('Supprimer ce compte définitivement ?');">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-xs font-mono text-red-600 hover:underline">Supprimer</button>
@@ -182,7 +191,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-6 py-10 text-center text-[#64748B] font-mono text-sm">Aucun manager pour le moment.</td>
+                            <td colspan="5" class="px-6 py-10 text-center text-[#64748B] font-mono text-sm">Aucun manager ou RH pour le moment.</td>
                         </tr>
                     @endforelse
                 </tbody>

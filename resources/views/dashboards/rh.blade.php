@@ -20,7 +20,6 @@
             </div>
         @endif
 
-        {{-- Stats ledger --}}
         <div class="grid grid-cols-2 mb-10 bg-white border border-[#DCE6F5] rounded-2xl overflow-hidden divide-x divide-[#DCE6F5] shadow-sm">
             <div class="p-6">
                 <div class="flex items-center gap-2 mb-3">
@@ -42,7 +41,6 @@
             </div>
         </div>
 
-        {{-- Candidats à affecter --}}
         <div class="mb-4 flex items-end justify-between border-b border-[#DCE6F5] pb-3">
             <h2 class="font-serif text-2xl font-semibold text-[#13224B]">Candidats à affecter</h2>
             <span class="text-xs font-mono uppercase tracking-wide text-[#64748B]">{{ $enAttente }} en attente</span>
@@ -128,7 +126,6 @@
             @endforelse
         </div>
 
-        {{-- Liste des candidats affectés --}}
         <div class="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-[#DCE6F5] pb-3">
             <div>
                 <h2 class="font-serif text-2xl font-semibold text-[#13224B]">Candidats affectés</h2>
@@ -161,7 +158,6 @@
                 <div class="relative bg-white rounded-xl border border-[#DCE6F5] shadow-sm hover:shadow-md transition p-6 pl-8 mb-4 overflow-hidden">
                     <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#1D4ED8]"></div>
 
-                    {{-- stamp --}}
                     <div class="absolute top-4 right-5 rotate-[-8deg] hidden sm:block">
                         <div class="h-[70px] w-[70px] rounded-full border-2 border-[#1D4ED8]/70 text-[#1D4ED8] flex flex-col items-center justify-center leading-tight">
                             <span class="text-[9px] font-bold tracking-widest uppercase">Affecté</span>

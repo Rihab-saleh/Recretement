@@ -87,9 +87,12 @@
             ['Dossiers employés', 'rh.employes', 'M17 20h5v-2a3 3 0 00-5.356-1.783M17 20H7m10 0v-2c0-1.656-1.343-3-3-3H10c-1.657 0-3 1.344-3 3v2m10 0H7m10 0a3 3 0 00-3-3H10a3 3 0 00-3 3'],
             ['Paiement', 'rh.paiement', 'M9 7h6m-6 4h6m-7 8h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14l3-2 3 2z'],
         ],
+        'super_admin' => [
+            ['Entreprises', 'super-admin.dashboard', 'M3 21h18M5 21V7l8-4v18M13 21V11l6 4v6M9 9h.01M9 13h.01M9 17h.01'],
+        ],
     ];
     $items = $menus[$role] ?? $menus['candidat'];
-    $roleLabel = ['manager' => 'Manager', 'candidat' => 'Candidat', 'rh' => 'RH', 'admin' => 'Admin'][$role] ?? ucfirst($role);
+    $roleLabel = ['manager' => 'Manager', 'candidat' => 'Candidat', 'rh' => 'RH', 'admin' => 'Admin', 'super_admin' => 'Super Admin'][$role] ?? ucfirst($role);
     
     if ($role === 'candidat' && $estAccepte) {
         $roleLabel = 'Employé';
@@ -102,6 +105,10 @@
         $notifCount = \App\Models\Notification::where('personne_id', $user->id)->where('lu', false)->count();
         $notifs = \App\Models\Notification::where('personne_id', $user->id)->orderByDesc('created_at')->limit(8)->get();
     }
+
+    $entreprise = $user?->entreprise;
+    $brandName = $entreprise?->nom ?: config('app.name', 'Recrutement');
+    $brandLogoUrl = $entreprise?->logo ? Storage::disk('public')->url($entreprise->logo) : null;
 @endphp
 
 <div class="min-h-screen bg-[#F1F5FB]"
@@ -125,8 +132,12 @@
         </button>
 
         <div class="flex items-center gap-2 h-16 px-6 border-b border-white/10 shrink-0" :class="sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''">
-            <x-application-logo class="h-8 w-8 fill-current text-[#60A5FA] shrink-0" />
-            <span class="font-serif text-lg font-semibold tracking-tight" x-show="!sidebarCollapsed" x-cloak x-transition.opacity>Recrutement</span>
+            @if($brandLogoUrl)
+                <img src="{{ $brandLogoUrl }}" alt="{{ $brandName }}" class="h-8 w-8 rounded-md object-cover shrink-0">
+            @else
+                <x-application-logo class="h-8 w-8 fill-current text-[#60A5FA] shrink-0" />
+            @endif
+            <span class="font-serif text-lg font-semibold tracking-tight truncate" x-show="!sidebarCollapsed" x-cloak x-transition.opacity>{{ $brandName }}</span>
         </div>
 
         <nav class="flex-1 px-3 py-6 space-y-1 overflow-y-auto overflow-x-hidden">
@@ -164,9 +175,13 @@
                x-transition:leave-start="translate-x-0"
                x-transition:leave-end="-translate-x-full">
             <div class="flex items-center justify-between h-16 px-6 border-b border-white/10 shrink-0">
-                <div class="flex items-center gap-2">
-                    <x-application-logo class="h-8 w-8 fill-current text-[#60A5FA]" />
-                    <span class="font-serif text-lg font-semibold tracking-tight">Recrutement</span>
+                <div class="flex items-center gap-2 min-w-0">
+                    @if($brandLogoUrl)
+                        <img src="{{ $brandLogoUrl }}" alt="{{ $brandName }}" class="h-8 w-8 rounded-md object-cover shrink-0">
+                    @else
+                        <x-application-logo class="h-8 w-8 fill-current text-[#60A5FA] shrink-0" />
+                    @endif
+                    <span class="font-serif text-lg font-semibold tracking-tight truncate">{{ $brandName }}</span>
                 </div>
                 <button @click="mobileMenuOpen = false" class="text-[#F1F5FB]/70 p-1">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,14 +212,18 @@
             <div class="flex h-16 items-center justify-between px-4 sm:px-6">
 
                 {{-- Left: mobile menu trigger + compact logo (mobile only) --}}
-                <div class="flex items-center gap-2 lg:hidden">
-                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-[#F1F5FB]/70 p-2 -ml-2">
+                <div class="flex items-center gap-2 lg:hidden min-w-0">
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-[#F1F5FB]/70 p-2 -ml-2 shrink-0">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <x-application-logo class="h-7 w-7 fill-current text-[#60A5FA]" />
-                    <span class="font-serif text-base font-semibold tracking-tight">Recrutement</span>
+                    @if($brandLogoUrl)
+                        <img src="{{ $brandLogoUrl }}" alt="{{ $brandName }}" class="h-7 w-7 rounded-md object-cover shrink-0">
+                    @else
+                        <x-application-logo class="h-7 w-7 fill-current text-[#60A5FA] shrink-0" />
+                    @endif
+                    <span class="font-serif text-base font-semibold tracking-tight truncate">{{ $brandName }}</span>
                 </div>
 
                 <div class="hidden lg:block"></div>

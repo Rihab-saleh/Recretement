@@ -107,7 +107,21 @@
 
             
                 @forelse($offres as $offre)
+                    @php $entreprise = $offre->personne?->entreprise; @endphp
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
+                        @if($entreprise)
+                            <div class="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
+                                @if($entreprise->logo)
+                                    <img src="{{ Storage::disk('public')->url($entreprise->logo) }}" alt="{{ $entreprise->nom }}"
+                                         class="h-7 w-7 rounded-md object-cover shrink-0 border border-gray-200">
+                                @else
+                                    <span class="h-7 w-7 rounded-md bg-gray-100 border border-gray-200 shrink-0 flex items-center justify-center text-[11px] font-semibold text-gray-400">
+                                        {{ strtoupper(substr($entreprise->nom, 0, 1)) }}
+                                    </span>
+                                @endif
+                                <span class="text-sm font-semibold text-gray-600">{{ $entreprise->nom }}</span>
+                            </div>
+                        @endif
                         <div class="flex justify-between items-start">
                             <div>
                                 <h3 class="text-lg font-bold text-gray-800">{{ $offre->intitule }}</h3>

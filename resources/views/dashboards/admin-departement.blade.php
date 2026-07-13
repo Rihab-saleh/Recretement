@@ -1,7 +1,6 @@
 <x-app-shell>
     <div class="max-w-7xl mx-auto px-6 py-8">
 
-        {{-- Fil d'ariane / retour --}}
         <div class="mb-6">
             <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wide text-[#1D4ED8] hover:underline">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -11,7 +10,6 @@
             </a>
         </div>
 
-        {{-- Letterhead --}}
         <div class="mb-10 relative overflow-hidden rounded-2xl bg-[#13224B] text-[#F1F5FB] px-8 py-10 shadow-xl shadow-black/10">
             <div class="absolute inset-x-8 top-6 h-px bg-[#60A5FA]/40"></div>
             <p class="text-[11px] uppercase tracking-[0.25em] text-[#60A5FA] font-mono mb-4">
@@ -25,7 +23,6 @@
             </p>
         </div>
 
-        {{-- Liste des employés --}}
         <div class="bg-white rounded-2xl border border-[#DCE6F5] shadow-sm overflow-hidden mb-12">
             <table class="w-full text-sm">
                 <thead class="bg-[#F5F6FA] text-[#64748B] text-[11px] uppercase tracking-wide font-mono">
