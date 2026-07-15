@@ -21,6 +21,10 @@ class AffectationsImport implements ToCollection, WithHeadingRow
     private int $misesAJour = 0;
     private array $lignesIgnorees = [];
 
+    public function __construct(private ?int $entrepriseId = null)
+    {
+    }
+
     public function collection(Collection $rows)
     {
         foreach ($rows as $numero => $row) {
@@ -30,7 +34,10 @@ class AffectationsImport implements ToCollection, WithHeadingRow
                 continue;
             }
 
-            $candidat = Candidat::find($id);
+            $candidat = Candidat::whereHas('personne', function ($q) {
+                    $q->where('entreprise_id', $this->entrepriseId);
+                })
+                ->find($id);
 
             if (! $candidat) {
                 $this->lignesIgnorees[] = $numero + 2; // +2 : ligne d'en-tête + index base 0

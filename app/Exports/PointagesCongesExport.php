@@ -18,11 +18,13 @@ class PointagesCongesExport implements FromCollection, WithHeadings, ShouldAutoS
 {
     protected int $mois;
     protected int $annee;
+    protected ?int $entrepriseId;
 
-    public function __construct(int $mois, int $annee)
+    public function __construct(int $mois, int $annee, ?int $entrepriseId = null)
     {
         $this->mois = $mois;
         $this->annee = $annee;
+        $this->entrepriseId = $entrepriseId;
     }
 
     public function title(): string
@@ -55,6 +57,9 @@ class PointagesCongesExport implements FromCollection, WithHeadings, ShouldAutoS
         $candidats = Candidat::where('statutCandidature', 'affecté')
             ->whereNotNull('date_affectation')
             ->where('date_affectation', '<=', $finMois->toDateString())
+            ->whereHas('personne', function ($q) {
+                $q->where('entreprise_id', $this->entrepriseId);
+            })
             ->get()
             ->keyBy('personne_id');
 

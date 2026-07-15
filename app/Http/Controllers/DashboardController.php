@@ -89,8 +89,13 @@ class DashboardController extends Controller
 
     public function rh()
     {
+        $entrepriseId = Auth::user()?->entreprise_id;
+
         $candidatsEnAttente = Candidature::with(['personne', 'offre'])
             ->where('statut', 'accepté')
+            ->whereHas('offre.personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
             ->whereDoesntHave('personne.candidat', function ($q) {
                 $q->where('statutCandidature', 'affecté');
             })
@@ -101,6 +106,9 @@ class DashboardController extends Controller
 
         $candidatsAffectes = Candidature::with(['personne.candidat', 'offre.personne.entreprise'])
             ->where('statut', 'accepté')
+            ->whereHas('offre.personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
             ->whereHas('personne.candidat', function ($q) {
                 $q->where('statutCandidature', 'affecté');
             })

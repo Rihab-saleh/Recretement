@@ -9,12 +9,15 @@ use App\Models\Personne;
 use App\Models\Pointage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 
 class RhCalendrierController extends Controller
 {
     public function index(Request $request)
     {
+        $entrepriseId = Auth::user()?->entreprise_id;
+
         $mois = (int) $request->query('mois', now()->month);
         $annee = (int) $request->query('annee', now()->year);
 
@@ -27,6 +30,9 @@ class RhCalendrierController extends Controller
         $candidats = Candidat::where('statutCandidature', 'affecté')
             ->whereNotNull('date_affectation')
             ->where('date_affectation', '<=', $finMois->toDateString())
+            ->whereHas('personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
             ->get()
             ->keyBy('personne_id');
 
@@ -139,6 +145,6 @@ class RhCalendrierController extends Controller
 
         $nomFichier = 'pointages_conges_' . str_pad($mois, 2, '0', STR_PAD_LEFT) . '_' . $annee . '.xlsx';
 
-        return Excel::download(new PointagesCongesExport($mois, $annee), $nomFichier);
+        return Excel::download(new PointagesCongesExport($mois, $annee, Auth::user()?->entreprise_id), $nomFichier);
     }
 }

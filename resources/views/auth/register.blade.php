@@ -43,32 +43,6 @@
                     @error('email') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
-                <div class="mb-4">
-                    <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
-                    <select
-                        id="role" name="role" required
-                        onchange="toggleDepartement(this.value)"
-                        class="w-full border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="">-- Choisir un rôle --</option>
-                        <option value="candidat" {{ old('role') == 'candidat' ? 'selected' : '' }}>Candidat</option>
-                        <option value="rh"       {{ old('role') == 'rh'       ? 'selected' : '' }}>Professionnel RH</option>
-                        <option value="admin"    {{ old('role') == 'admin'    ? 'selected' : '' }}>Admin</option>
-                    </select>
-                    @error('role') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <div class="mb-4 hidden" id="departement_field">
-                    <label for="departement" class="block text-sm font-medium text-gray-700 mb-1">Département</label>
-                    <input
-                        id="departement" type="text" name="departement"
-                        value="{{ old('departement') }}"
-                        autocomplete="organization"
-                        class="w-full border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    @error('departement') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-
                 <div class="mb-2">
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
                     <input
@@ -99,27 +73,5 @@
             </form>
         </div>
     </div>
-
-    <script>
-        function toggleDepartement(role) {
-            const field = document.getElementById('departement_field');
-            const input = document.getElementById('departement');
-            if (role === 'manager') {
-                field.classList.remove('hidden');
-                input.required = true;
-            } else {
-                field.classList.add('hidden');
-                input.required = false;
-                input.value = '';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const role = document.getElementById('role').value;
-            if (role === 'manager') {
-                toggleDepartement('manager');
-            }
-        });
-    </script>
 
 </x-guest-layout>

@@ -18,6 +18,10 @@ use Maatwebsite\Excel\Concerns\WithTitle;
  */
 class AffectationsExport implements FromCollection, WithHeadings, ShouldAutoSize, WithTitle
 {
+    public function __construct(private ?int $entrepriseId = null)
+    {
+    }
+
     public function title(): string
     {
         return 'Affectations';
@@ -40,7 +44,9 @@ class AffectationsExport implements FromCollection, WithHeadings, ShouldAutoSize
     {
         $candidats = Candidat::with('personne')
             ->where('statutCandidature', 'affecté')
-            ->whereHas('personne')
+            ->whereHas('personne', function ($q) {
+                $q->where('entreprise_id', $this->entrepriseId);
+            })
             ->get()
             ->sortBy(fn ($c) => $c->personne->nom ?? '');
 

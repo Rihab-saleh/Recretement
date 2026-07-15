@@ -44,8 +44,8 @@
 
     <div class="bloc">
         <h2>Entre les soussignés</h2>
-        <div class="ligne"><strong>L'employeur :</strong> {{ $entreprise->nom ?? config('app.name', 'Entreprise') }}</div>
-        <div class="ligne"><strong>Représenté par :</strong> {{ $responsableNom }}</div>
+        <div class="ligne"><strong>L'employeur :</strong> {{ $responsableNom }}</div>
+        <div class="ligne"><strong>Représenté par :</strong> {{ $entreprise->nom ?? config('app.name', 'Entreprise') }}</div>
     </div>
 
     <div class="bloc">

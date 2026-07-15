@@ -202,7 +202,9 @@ class FichePaieController extends Controller
         $candidats = Candidat::with('personne')
             ->where('statutCandidature', 'affecté')
             ->whereNotNull('date_affectation')
-            ->whereHas('personne')
+            ->whereHas('personne', function ($q) {
+                $q->where('entreprise_id', Auth::user()?->entreprise_id);
+            })
             ->get()
             ->sortBy(fn ($c) => $c->personne->nom ?? '');
 
@@ -249,6 +251,8 @@ class FichePaieController extends Controller
 
         $candidat = Candidat::with('personne')->where('personne_id', $personneId)->firstOrFail();
 
+        abort_unless($candidat->personne?->entreprise_id === Auth::user()?->entreprise_id, 403);
+
         $this->genererPourCandidat($candidat, $mois, $annee, $pourcentages);
 
         return redirect()->back()->with(
@@ -272,7 +276,9 @@ class FichePaieController extends Controller
         $candidats = Candidat::with('personne')
             ->where('statutCandidature', 'affecté')
             ->whereNotNull('date_affectation')
-            ->whereHas('personne')
+            ->whereHas('personne', function ($q) {
+                $q->where('entreprise_id', Auth::user()?->entreprise_id);
+            })
             ->get();
 
         foreach ($candidats as $candidat) {
@@ -287,6 +293,13 @@ class FichePaieController extends Controller
      */
     public function telecharger(FichePaie $fichePaie)
     {
+        $user = Auth::user();
+        $estProprietaire = $fichePaie->personne_id === $user?->id;
+        $estRhDeLEntreprise = in_array($user?->role, ['rh', 'admin'])
+            && $user?->entreprise_id === $fichePaie->personne?->entreprise_id;
+
+        abort_unless($estProprietaire || $estRhDeLEntreprise, 403);
+
         abort_unless($fichePaie->fichierPDF && Storage::disk('public')->exists($fichePaie->fichierPDF), 404);
 
         return Storage::disk('public')->download($fichePaie->fichierPDF, 'bulletin_' . $fichePaie->periode . '.pdf');

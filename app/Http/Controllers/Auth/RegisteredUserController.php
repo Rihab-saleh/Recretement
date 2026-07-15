@@ -23,54 +23,32 @@ class RegisteredUserController extends Controller
             'nom'    => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'email'  => 'required|email|unique:personnes,email',
-            // TODO: retirer 'admin' de cette liste une fois le compte admin créé.
-            'role'   => 'required|in:manager,candidat,rh,admin',
         ];
-
-        if ($request->role === 'manager') {
-            $rules['departement'] = 'required|string|max:255';
-        }
 
         $request->validate(
             array_merge($rules, Personne::passwordRules()),
             Personne::passwordMessages()
         );
 
-        // Debug — remove after testing
-        // dd($request->all());
-
+        // L'inscription publique ne crée que des comptes candidat.
+        // Les comptes manager / rh / admin sont créés depuis les
+        // tableaux de bord admin / super-admin, jamais via ce formulaire.
         $personne = Personne::create([
-            'nom'         => $request->nom,
-            'prenom'      => $request->prenom,
-            'email'       => $request->email,
-            'password'    => Hash::make($request->password),
-            'role'        => $request->role,
-            'departement' => $request->role === 'manager' ? $request->departement : null,
+            'nom'      => $request->nom,
+            'prenom'   => $request->prenom,
+            'email'    => $request->email,
+            'password' => Hash::make($request->password),
+            'role'     => 'candidat',
         ]);
 
         event(new Registered($personne));
 
-        if ($personne->role === 'manager') {
-            Auth::login($personne);
-            return redirect()->route('manager.dashboard');
-        }
+        Candidat::create([
+            'personne_id' => $personne->id,
+        ]);
 
-        if ($personne->role === 'candidat') {
-            Candidat::create([
-                'personne_id' => $personne->id,
-            ]);
-            Auth::login($personne);
-            return redirect()->route('candidat.dashboard');
-        }
+        Auth::login($personne);
 
-        if ($personne->role === 'rh') {
-            Auth::login($personne);
-            return redirect()->route('rh.dashboard');
-        }
-
-        if ($personne->role === 'admin') {
-            Auth::login($personne);
-            return redirect()->route('admin.dashboard');
-        }
+        return redirect()->route('candidat.dashboard');
     }
 }

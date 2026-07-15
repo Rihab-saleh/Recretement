@@ -2,260 +2,312 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Offre;
-use App\Models\Candidature;
 use App\Models\Candidat;
-use App\Models\Personne;
-use App\Models\Entreprise;
-use App\Models\FichePaie;
-use App\Models\Pointage;
+use App\Models\Candidature;
 use App\Models\Notification;
+use App\Models\Offre;
+use App\Exports\AffectationsExport;
+use App\Imports\AffectationsImport;
 use App\Services\ContratService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
-class DashboardController extends Controller
+class ProfessionnelRHController extends Controller
 {
-    public function manager()
+   
+    public function candidaturesEnAttente(Request $request)
     {
-        $personne = Auth::user();
-        $departement = $personne?->departement ?? 'Non défini';
+        $entrepriseId = Auth::user()?->entreprise_id;
 
-        $offres = Offre::where('personne_id', Auth::id())->get();
-
-        foreach ($offres as $offre) {
-            $offre->fermerSiNecessaire();
-
-            $offre->candidatures_count = Candidature::where('offre_id', $offre->id)
-                ->where('statut', 'en_attente')
-                ->where('valide_rh', true)
-                ->count();
-
-            $offre->candidatures_acceptees = Candidature::where('offre_id', $offre->id)
-                ->where('statut', 'accepté')
-                ->count();
-
-            $offre->candidatures_refusees = Candidature::where('offre_id', $offre->id)
-                ->where('statut', 'refusé')
-                ->count();
-        }
-
-        return view('dashboards.manager', compact('offres', 'departement', 'personne'));
-    }
-
-    public function candidat()
-    {
-        $candidatures = Candidature::where('personne_id', Auth::id())->with('offre')->get();
-
-        $appliedOfferIds = $candidatures->pluck('offre_id')->all();
-        $estAccepte = $candidatures->where('statut', 'accepté')->count() > 0;
-
-        if ($estAccepte) {
-            $offres = collect();
-        } else {
-            $offres = Offre::where('statut', 'ouvert')
-                ->with('personne.entreprise')
-                ->when(!empty($appliedOfferIds), function ($query) use ($appliedOfferIds) {
-                    return $query->whereNotIn('id', $appliedOfferIds);
-                })
-                ->get()
-                ->filter(function ($offre) {
-                    return ! $offre->estExpiree() && ! $offre->estSaturee();
-                });
-        }
-
-        $pointages = collect();
-        $pointeAujourdhui = false;
-        $sortiAujourdhui = false;
-
-        if ($estAccepte) {
-            $pointages = Pointage::where('personne_id', Auth::id())
-                ->orderByDesc('date')
-                ->limit(15)
-                ->get();
-
-            $pointageDuJour = Pointage::where('personne_id', Auth::id())
-                ->where('date', now()->toDateString())
-                ->first();
-
-            $pointeAujourdhui = (bool) $pointageDuJour;
-            $sortiAujourdhui = $pointageDuJour ? !empty($pointageDuJour->heureSortie) : false;
-        }
-
-        return view('dashboards.candidat', compact(
-            'offres', 'candidatures', 'estAccepte', 'pointages', 'pointeAujourdhui', 'sortiAujourdhui'
-        ));
-    }
-
-    public function rh()
-    {
-        $candidatsEnAttente = Candidature::with(['personne', 'offre'])
-            ->where('statut', 'accepté')
-            ->whereDoesntHave('personne.candidat', function ($q) {
-                $q->where('statutCandidature', 'affecté');
-            })
-            ->latest()
-            ->get();
-
-        $enAttente = $candidatsEnAttente->count();
-
-        $candidatsAffectes = Candidature::with(['personne.candidat', 'offre.personne.entreprise'])
-            ->where('statut', 'accepté')
-            ->whereHas('personne.candidat', function ($q) {
-                $q->where('statutCandidature', 'affecté');
-            })
-            ->latest()
-            ->get();
-
-        foreach ($candidatsAffectes as $candidature) {
-            $c = $candidature->personne?->candidat;
-
-            if ($c) {
-                $fichierContrat = ContratService::dernierContratExistant($c->personne_id);
-
-                if (! $fichierContrat) {
-                    $fichierContrat = ContratService::genererEtNotifier(
-                        $c->personne,
-                        $c,
-                        "Voici votre contrat de travail (département : {$c->affectation}, responsable : {$c->responsable_nom}).",
-                        'info',
-                        $candidature->offre?->personne?->entreprise
-                    );
-                }
-
-                $c->contrat_url = Storage::url($fichierContrat);
-            }
-        }
-
-        $affectes = $candidatsAffectes->count();
-
-        return view('dashboards.rh', compact('enAttente', 'affectes', 'candidatsAffectes', 'candidatsEnAttente'));
-    }
-
-    public function admin()
-    {
-        $entrepriseId = Auth::user()->entreprise_id;
-        $entreprise = Auth::user()->entreprise;
-
-        $personnesEntreprise = Personne::where('entreprise_id', $entrepriseId);
-
-        $effectifs = [
-            'managers'   => (clone $personnesEntreprise)->where('role', 'manager')->count(),
-            'rh'         => (clone $personnesEntreprise)->where('role', 'rh')->count(),
-            'candidats'  => (clone $personnesEntreprise)->where('role', 'candidat')->count(),
-            'employes'   => Candidat::whereHas('personne', function ($q) use ($entrepriseId) {
-                    $q->where('entreprise_id', $entrepriseId);
-                })
-                ->where('statutCandidature', 'affecté')
-                ->count(),
-        ];
-
-        $offresEntreprise = Offre::whereHas('personne', function ($q) use ($entrepriseId) {
-            $q->where('entreprise_id', $entrepriseId);
-        });
-
-        $offresOuvertes = (clone $offresEntreprise)->where('statut', 'ouvert')->count();
-        $offresFermees = (clone $offresEntreprise)->where('statut', '!=', 'ouvert')->count();
-
-        $candidaturesEnAttente = Candidature::where('statut', 'en_attente')
+        $candidatures = Candidature::with(['personne', 'offre'])
+            ->where('statut', 'en_attente')
+            ->where('valide_rh', false)
             ->whereHas('offre.personne', function ($q) use ($entrepriseId) {
                 $q->where('entreprise_id', $entrepriseId);
             })
-            ->count();
-
-        $mois = now()->month;
-        $annee = now()->year;
-
-        $fichesDuMois = FichePaie::where('mois', $mois)
-            ->where('annee', $annee)
-            ->whereHas('personne', function ($q) use ($entrepriseId) {
-                $q->where('entreprise_id', $entrepriseId);
-            })
-            ->get();
-        $masseSalariale = $fichesDuMois->sum('salaireNet');
-        $bulletinsGeneres = $fichesDuMois->count();
-
-        $derniersEmployesAffectes = Candidat::with('personne')
-            ->whereHas('personne', function ($q) use ($entrepriseId) {
-                $q->where('entreprise_id', $entrepriseId);
-            })
-            ->where('statutCandidature', 'affecté')
-            ->latest('date_affectation')
-            ->limit(6)
-            ->get();
-
-        $departements = Candidat::whereHas('personne', function ($q) use ($entrepriseId) {
-                $q->where('entreprise_id', $entrepriseId);
-            })
-            ->where('statutCandidature', 'affecté')
-            ->whereNotNull('affectation')
-            ->selectRaw('affectation, count(*) as total')
-            ->groupBy('affectation')
-            ->orderByDesc('total')
-            ->get();
-
-        $personnes = Personne::where('entreprise_id', $entrepriseId)
-            ->orderBy('role')
-            ->orderBy('nom')
-            ->get();
-
-        $employesPromouvables = Personne::where('entreprise_id', $entrepriseId)
-            ->where('role', 'candidat')
-            ->whereHas('candidat', function ($q) {
-                $q->where('statutCandidature', 'affecté');
-            })
-            ->with('candidat')
-            ->orderBy('nom')
-            ->get();
-
-        return view('dashboards.admin', compact(
-            'entreprise',
-            'effectifs',
-            'offresOuvertes',
-            'offresFermees',
-            'candidaturesEnAttente',
-            'masseSalariale',
-            'bulletinsGeneres',
-            'mois',
-            'annee',
-            'derniersEmployesAffectes',
-            'departements',
-            'personnes',
-            'employesPromouvables'
-        ));
-    }
-
-    public function departementEmployes(string $departement)
-    {
-        $entrepriseId = Auth::user()->entreprise_id;
-
-        $employes = Candidat::with('personne')
-            ->whereHas('personne', function ($q) use ($entrepriseId) {
-                $q->where('entreprise_id', $entrepriseId);
-            })
-            ->where('statutCandidature', 'affecté')
-            ->where('affectation', $departement)
-            ->get();
-
-        return view('dashboards.admin-departement', compact('departement', 'employes'));
-    }
-
-    public function superAdmin()
-    {
-        $entreprises = Entreprise::withCount(['managers', 'rh'])
-            ->with(['admins' => function ($q) {
-                $q->select('id', 'nom', 'prenom', 'email', 'entreprise_id');
-            }])
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($candidature) {
+                $candidature->pieces_manquantes = $candidature->piecesManquantes();
 
-        $totalEntreprises = $entreprises->count();
-        $totalAdmins = Personne::where('role', 'admin')->count();
-        $totalManagers = Personne::where('role', 'manager')->count();
-        $totalRh = Personne::where('role', 'rh')->count();
+                return $candidature;
+            });
 
-        return view('dashboards.super-admin', compact(
-            'entreprises', 'totalEntreprises', 'totalAdmins', 'totalManagers', 'totalRh'
-        ));
+        return view('rh.candidatures-en-attente', compact('candidatures'));
+    }
+
+   
+    public function validerPourManager($candidatureId)
+    {
+        $candidature = Candidature::with('offre.personne')->findOrFail($candidatureId);
+
+        abort_unless($candidature->offre?->personne?->entreprise_id === Auth::user()?->entreprise_id, 403);
+
+        if ($candidature->statut !== 'en_attente') {
+            return redirect()->back()->with('error', 'Seules les candidatures en attente peuvent être validées.');
+        }
+
+        $candidature->update([
+            'valide_rh' => true,
+            'date_validation_rh' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Candidature validée et transmise au manager.');
+    }
+
+    public function rejeterAvantManager(Request $request, $candidatureId)
+    {
+        $request->validate([
+            'note_refus' => 'nullable|string|max:1000',
+        ]);
+
+        $candidature = Candidature::with('offre.personne')->findOrFail($candidatureId);
+
+        abort_unless($candidature->offre?->personne?->entreprise_id === Auth::user()?->entreprise_id, 403);
+
+        if ($candidature->statut !== 'en_attente' || $candidature->valide_rh) {
+            return redirect()->back()->with('error', 'Cette candidature ne peut plus être rejetée à ce stade.');
+        }
+
+        $candidature->update([
+            'statut' => 'refusé',
+            'note_refus' => $request->note_refus ?: 'Dossier non conforme, rejeté par le service RH.',
+        ]);
+
+        Notification::create([
+            'personne_id' => $candidature->personne_id,
+            'message' => 'Votre candidature pour le poste "' . ($candidature->offre->intitule ?? '')
+                . '" a été refusée par le service RH.',
+            'type' => 'error',
+            'dateEnvoi' => now(),
+            'lu' => false,
+        ]);
+
+        return redirect()->back()->with('success', 'Candidature rejetée avant transmission au manager.');
+    }
+
+    public function index(Request $request)
+    {
+        $entrepriseId = Auth::user()?->entreprise_id;
+
+        $query = Candidature::with(['personne.candidat', 'offre'])
+            ->where('statut', 'accepté')
+            ->where('valide_rh', true)
+            ->whereHas('offre.personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
+            ->whereHas('personne.candidat', function ($q) {
+                $q->where('statutCandidature', 'affecté');
+            });
+
+        if ($request->filled('departement')) {
+            $departement = $request->departement;
+            $query->whereHas('offre', function ($q) use ($departement) {
+                $q->where('departement', $departement);
+            });
+        }
+
+        if ($request->filled('poste')) {
+            $poste = $request->poste;
+            $query->whereHas('offre', function ($q) use ($poste) {
+                $q->where('intitule', $poste);
+            });
+        }
+
+        if ($request->filled('nom')) {
+            $recherche = $request->nom;
+            $query->whereHas('personne', function ($q) use ($recherche) {
+                $q->where('nom', 'like', "%{$recherche}%")
+                  ->orWhere('prenom', 'like', "%{$recherche}%")
+                  ->orWhereRaw("CONCAT(prenom, ' ', nom) like ?", ["%{$recherche}%"])
+                  ->orWhereRaw("CONCAT(nom, ' ', prenom) like ?", ["%{$recherche}%"]);
+            });
+        }
+
+        $candidatures = $query->latest()->get()->map(function ($candidature) {
+            $candidature->statut_rh = $candidature->personne?->candidat?->statutCandidature === 'affecté'
+                ? 'affecte'
+                : 'en_attente';
+
+            $candidature->pieces_manquantes = $candidature->piecesManquantes();
+
+            return $candidature;
+        });
+
+        $departements = Offre::whereNotNull('departement')
+            ->whereHas('personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
+            ->distinct()
+            ->orderBy('departement')
+            ->pluck('departement');
+
+        $postes = Offre::whereNotNull('intitule')
+            ->whereHas('personne', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
+            ->distinct()
+            ->orderBy('intitule')
+            ->pluck('intitule');
+
+        return view('rh.employes', compact('candidatures', 'departements', 'postes'));
+    }
+
+    public function affecter(Request $request, $candidatureId)
+    {
+        $request->validate([
+            'departement' => 'required|string|max:255',
+            'salaire_propose' => 'required|numeric|min:0',
+            'responsable_nom' => 'required|string|max:255',
+        ]);
+
+        $candidature = Candidature::with('offre.personne.entreprise')->findOrFail($candidatureId);
+
+        abort_unless($candidature->offre?->personne?->entreprise_id === Auth::user()?->entreprise_id, 403);
+
+        if ($candidature->statut !== 'accepté') {
+            return redirect()->back()->with('error', 'Seules les candidatures acceptées peuvent être affectées.');
+        }
+
+        $candidat = $candidature->personne->candidat;
+
+        // Le candidat rejoint désormais officiellement l'entreprise qui l'a recruté :
+        // on le rattache sur sa fiche Personne (nécessaire pour les listes paie/calendrier,
+        // qui filtrent directement sur personne.entreprise_id).
+        $candidature->personne->update([
+            'entreprise_id' => $candidature->offre?->personne?->entreprise_id,
+        ]);
+
+        if (!$candidat) {
+            $candidat = $candidature->personne->candidat()->create([
+                'personne_id' => $candidature->personne_id,
+                'statutCandidature' => 'affecté',
+                'affectation' => $request->departement,
+                'salaire_propose' => $request->salaire_propose,
+                'responsable_nom' => $request->responsable_nom,
+                'date_affectation' => now()->toDateString(),
+            ]);
+        } else {
+            $candidat->update([
+                'statutCandidature' => 'affecté',
+                'affectation' => $request->departement,
+                'salaire_propose' => $request->salaire_propose,
+                'responsable_nom' => $request->responsable_nom,
+                'date_affectation' => now()->toDateString(),
+            ]);
+        }
+
+        ContratService::genererEtNotifier(
+            $candidature->personne,
+            $candidat,
+            "Vous avez été affecté(e) au département '{$request->departement}' avec un salaire proposé de {$request->salaire_propose} DT. Responsable: {$request->responsable_nom}. Veuillez trouver ci-joint votre contrat de travail.",
+            'success',
+            $candidature->offre?->personne?->entreprise
+        );
+
+        return redirect()->back()->with('success', 'Candidat affecté avec succès, notifié et contrat transmis !');
+    }
+
+    
+    public function refuser(Request $request, $candidatureId)
+    {
+        $request->validate([
+            'note_refus' => 'nullable|string|max:1000',
+        ]);
+
+        $candidature = Candidature::with('offre.personne')->findOrFail($candidatureId);
+
+        abort_unless($candidature->offre?->personne?->entreprise_id === Auth::user()?->entreprise_id, 403);
+
+        // Vérifier que la candidature est acceptée
+        if ($candidature->statut !== 'accepté') {
+            return redirect()->back()->with('error', 'Seules les candidatures acceptées peuvent être refusées.');
+        }
+
+        $candidature->update([
+            'statut' => 'refusé',
+            'note_refus' => $request->note_refus,
+        ]);
+
+        // Créer une notification pour le candidat
+        $message = "Votre candidature a été refusée";
+        if ($request->note_refus) {
+            $message .= ": {$request->note_refus}";
+        }
+
+        Notification::create([
+            'personne_id' => $candidature->personne_id,
+            'message' => $message,
+            'type' => 'error',
+            'dateEnvoi' => now(),
+            'lu' => false,
+        ]);
+
+        return redirect()->back()->with('success', 'Candidat refusé et notifié.');
+    }
+
+    
+    public function supprimer($candidatureId)
+    {
+        $candidature = Candidature::with('offre.personne')->findOrFail($candidatureId);
+
+        abort_unless($candidature->offre?->personne?->entreprise_id === Auth::user()?->entreprise_id, 403);
+
+       
+        if (!in_array($candidature->statut, ['accepté', 'refusé'])) {
+            return redirect()->back()->with('error', 'Seuls les dossiers acceptés ou refusés peuvent être supprimés.');
+        }
+
+        $candidature->delete();
+
+        return redirect()->back()->with('success', 'Dossier supprimé avec succès.');
+    }
+
+
+    public function exporterAffectations()
+    {
+        return Excel::download(new AffectationsExport(Auth::user()?->entreprise_id), 'affectations_employes.xlsx');
+    }
+
+    public function importerAffectations(Request $request)
+    {
+        $request->validate([
+            'fichier_affectations' => 'required|file|mimes:xlsx,xls,csv',
+        ]);
+
+        $import = new AffectationsImport(Auth::user()?->entreprise_id);
+        Excel::import($import, $request->file('fichier_affectations'));
+
+        $misesAJour = $import->getMisesAJour();
+        $ignorees = $import->getLignesIgnorees();
+
+        $message = $misesAJour . ' employé(s) mis à jour avec succès.';
+        if (! empty($ignorees)) {
+            $message .= ' Lignes ignorées (ID introuvable) : ' . implode(', ', $ignorees) . '.';
+        }
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    public function renvoyerContrat($personneId)
+    {
+        $candidat = Candidat::with('personne')->where('personne_id', $personneId)->firstOrFail();
+        $entreprise = ContratService::entrepriseDuCandidat($personneId);
+
+        abort_unless($entreprise?->id === Auth::user()?->entreprise_id, 403);
+
+        ContratService::genererEtNotifier(
+            $candidat->personne,
+            $candidat,
+            "Voici à nouveau votre contrat de travail (département : {$candidat->affectation}, responsable : {$candidat->responsable_nom}).",
+            'info',
+            $entreprise
+        );
+
+        return redirect()->back()->with(
+            'success',
+            'Contrat renvoyé à ' . ($candidat->personne->prenom ?? '') . ' ' . ($candidat->personne->nom ?? '') . '.'
+        );
     }
 }
