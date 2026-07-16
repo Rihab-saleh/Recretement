@@ -163,6 +163,7 @@ class FichePaieController extends Controller
 
         return [
             'candidat' => $candidat,
+            'entreprise' => $candidat->personne?->entreprise,
             'mois' => $mois,
             'annee' => $annee,
             'periode' => $debutMois->translatedFormat('F Y'),

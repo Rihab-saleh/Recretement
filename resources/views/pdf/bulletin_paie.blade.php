@@ -94,7 +94,7 @@
         <tr>
             <td>
                 <div class="bloc-entreprise">
-                    <div class="nom-entreprise">{{ config('app.name', 'Entreprise') }}</div>
+                    <div class="nom-entreprise">{{ $entreprise->nom ?? 'Entreprise' }}</div>
                     <div class="adresse-entreprise">Fiche de paie générée automatiquement</div>
                     <div class="info-entreprise">
                         <strong>Établissement :</strong> {{ $candidat->affectation ?? '—' }}<br>
@@ -242,7 +242,7 @@
     </table>
 
     <div class="footer-doc">
-        Bulletin de paie simplifié — document généré automatiquement le {{ now()->format('d/m/Y') }} — {{ config('app.name', 'Entreprise') }}
+        Bulletin de paie simplifié — document généré automatiquement le {{ now()->format('d/m/Y') }} — {{ $entreprise->nom ?? 'Entreprise' }}
     </div>
 
 </body>

@@ -35,4 +35,14 @@ class Entreprise extends Model
     {
         return $this->hasMany(Personne::class)->where('role', 'rh');
     }
+
+    public function abonnements()
+    {
+        return $this->hasMany(Abonnement::class);
+    }
+
+    public function abonnes()
+    {
+        return $this->belongsToMany(Personne::class, 'abonnements', 'entreprise_id', 'personne_id');
+    }
 }

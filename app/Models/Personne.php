@@ -117,4 +117,19 @@ class Personne extends Authenticatable
     {
         return $this->hasMany(Evaluation::class, 'personne_id');
     }
+
+    public function abonnements()
+    {
+        return $this->hasMany(Abonnement::class, 'personne_id');
+    }
+
+    public function entreprisesSuivies()
+    {
+        return $this->belongsToMany(Entreprise::class, 'abonnements', 'personne_id', 'entreprise_id');
+    }
+
+    public function suit(Entreprise $entreprise): bool
+    {
+        return $this->abonnements()->where('entreprise_id', $entreprise->id)->exists();
+    }
 }

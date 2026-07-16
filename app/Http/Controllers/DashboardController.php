@@ -82,8 +82,10 @@ class DashboardController extends Controller
             $sortiAujourdhui = $pointageDuJour ? !empty($pointageDuJour->heureSortie) : false;
         }
 
+        $entreprisesSuivies = \App\Models\Abonnement::where('personne_id', Auth::id())->pluck('entreprise_id')->all();
+
         return view('dashboards.candidat', compact(
-            'offres', 'candidatures', 'estAccepte', 'pointages', 'pointeAujourdhui', 'sortiAujourdhui'
+            'offres', 'candidatures', 'estAccepte', 'pointages', 'pointeAujourdhui', 'sortiAujourdhui', 'entreprisesSuivies'
         ));
     }
 

@@ -6,6 +6,7 @@ use App\Models\Offre;
 use App\Models\Candidature;
 use App\Models\Notification;
 use App\Models\Personne;
+use App\Models\Abonnement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,6 +16,29 @@ class OffreController extends Controller
     public function create()
     {
         return view('offres.create');
+    }
+
+    /**
+     * Page de détails d'une offre, destinée aux candidats (accessible depuis
+     * le tableau de bord candidat en cliquant sur une offre).
+     */
+    public function details(Offre $offre)
+    {
+        $offre->load('personne.entreprise');
+        $offre->fermerSiNecessaire();
+
+        $dejaPostule = false;
+        if (Auth::check() && Auth::user()->role === 'candidat') {
+            $dejaPostule = Candidature::where('personne_id', Auth::id())
+                ->where('offre_id', $offre->id)
+                ->exists();
+        }
+
+        $placesRestantes = $offre->nombre_candidats_max !== null
+            ? max(0, $offre->nombre_candidats_max - $offre->candidatures()->where('statut', 'accepté')->count())
+            : null;
+
+        return view('offres.details', compact('offre', 'dejaPostule', 'placesRestantes'));
     }
 
     
@@ -44,7 +68,19 @@ class OffreController extends Controller
             $validated['salaire'] = 0;
         }
 
-        Offre::create($validated);
+        $offre = Offre::create($validated);
+
+        if ($manager?->entreprise_id) {
+            Abonnement::where('entreprise_id', $manager->entreprise_id)
+                ->pluck('personne_id')
+                ->each(function ($personneId) use ($offre, $manager) {
+                    Notification::envoyer(
+                        $personneId,
+                        "{$manager->entreprise?->nom} vient de publier une nouvelle offre : « {$offre->intitule} ». Consultez-la dans vos offres disponibles.",
+                        'nouvelle_offre'
+                    );
+                });
+        }
 
         return redirect()->route('manager.dashboard')->with('success', 'Offre créée avec succès.');
     }

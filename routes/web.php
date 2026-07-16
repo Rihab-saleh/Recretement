@@ -12,10 +12,12 @@ use App\Http\Controllers\FichePaieController;
 use App\Http\Controllers\RhCalendrierController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\EntrepriseController;
+use App\Http\Controllers\AbonnementController;
 
 
 //fonctionalites manager 
 Route::get('/offres/create', [OffreController::class, 'create'])->name('offres.create');
+Route::get('/offres/{offre}/details', [OffreController::class, 'details'])->name('offres.details');
 Route::post('/offres', [OffreController::class, 'store'])->name('offres.store');
 Route::delete('/offres/{id}', [OffreController::class, 'destroy'])->name('offres.destroy');
 Route::get('/offres/{offre_id}/candidatures', [OffreController::class, 'candidatures'])->name('offres.candidatures');
@@ -53,6 +55,7 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.marquer-lu');
     Route::get('/manager/dashboard', [DashboardController::class, 'manager'])->name('manager.dashboard');
     Route::get('/candidat/dashboard', [DashboardController::class, 'candidat'])->name('candidat.dashboard');
+    Route::post('/entreprises/{entreprise}/suivre', [AbonnementController::class, 'toggle'])->name('entreprises.suivre');
     Route::get('/rh/dashboard', [DashboardController::class, 'rh'])->name('rh.dashboard');
 
     Route::get('/manager/candidats', [OffreController::class, 'candidatsAcceptes'])->name('candidats.index');

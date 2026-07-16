@@ -110,24 +110,45 @@
                     @php $entreprise = $offre->personne?->entreprise; @endphp
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4">
                         @if($entreprise)
-                            <div class="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
-                                @if($entreprise->logo)
-                                    <img src="{{ Storage::disk('public')->url($entreprise->logo) }}" alt="{{ $entreprise->nom }}"
-                                         class="h-7 w-7 rounded-md object-cover shrink-0 border border-gray-200">
-                                @else
-                                    <span class="h-7 w-7 rounded-md bg-gray-100 border border-gray-200 shrink-0 flex items-center justify-center text-[11px] font-semibold text-gray-400">
-                                        {{ strtoupper(substr($entreprise->nom, 0, 1)) }}
-                                    </span>
-                                @endif
-                                <span class="text-sm font-semibold text-gray-600">{{ $entreprise->nom }}</span>
+                            <div class="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-gray-100">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    @if($entreprise->logo)
+                                        <img src="{{ Storage::disk('public')->url($entreprise->logo) }}" alt="{{ $entreprise->nom }}"
+                                             class="h-7 w-7 rounded-md object-cover shrink-0 border border-gray-200">
+                                    @else
+                                        <span class="h-7 w-7 rounded-md bg-gray-100 border border-gray-200 shrink-0 flex items-center justify-center text-[11px] font-semibold text-gray-400">
+                                            {{ strtoupper(substr($entreprise->nom, 0, 1)) }}
+                                        </span>
+                                    @endif
+                                    <span class="text-sm font-semibold text-gray-600 truncate">{{ $entreprise->nom }}</span>
+                                </div>
+
+                                @php $suit = in_array($entreprise->id, $entreprisesSuivies ?? []); @endphp
+                                <form method="POST" action="{{ route('entreprises.suivre', $entreprise->id) }}" class="shrink-0">
+                                    @csrf
+                                    <button type="submit"
+                                            title="{{ $suit ? 'Ne plus suivre cette entreprise' : 'Suivre cette entreprise pour être notifié de ses nouvelles offres' }}"
+                                            class="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg transition
+                                                   {{ $suit ? 'text-amber-600 bg-amber-50 hover:bg-amber-100' : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50' }}">
+                                        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="{{ $suit ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 2l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 14.27l-4.78 2.43.91-5.32L2.27 7.62l5.34-.78L10 2z" />
+                                        </svg>
+                                        {{ $suit ? 'Suivi' : 'Suivre' }}
+                                    </button>
+                                </form>
                             </div>
                         @endif
                         <div class="flex justify-between items-start">
                             <div>
-                                <h3 class="text-lg font-bold text-gray-800">{{ $offre->intitule }}</h3>
+                                <a href="{{ route('offres.details', $offre->id) }}" class="hover:underline">
+                                    <h3 class="text-lg font-bold text-gray-800">{{ $offre->intitule }}</h3>
+                                </a>
                                 <p class="text-sm text-gray-500 mt-1">Département : {{ $offre->departement ?? 'N/A' }}</p>
                                 <p class="text-sm text-gray-500">Salaire : {{ number_format($offre->salaire, 2) }} DT</p>
                                 <p class="text-sm text-gray-600 mt-2">{{ Str::limit($offre->description, 150) }}</p>
+                                <a href="{{ route('offres.details', $offre->id) }}" class="inline-block mt-2 text-sm font-semibold text-blue-600 hover:underline">
+                                    Voir les détails →
+                                </a>
                             </div>
                             <div class="text-right">
                                 <span class="inline-block bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full mb-3">
