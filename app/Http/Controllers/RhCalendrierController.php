@@ -26,7 +26,6 @@ class RhCalendrierController extends Controller
         $aujourdhui = now()->endOfDay();
         $derniereDate = $finMois->greaterThan($aujourdhui) ? $aujourdhui->copy()->startOfDay() : $finMois;
 
-        // Dossiers candidats affectés à un département, avec leur date d'affectation
         $candidats = Candidat::where('statutCandidature', 'affecté')
             ->whereNotNull('date_affectation')
             ->where('date_affectation', '<=', $finMois->toDateString())

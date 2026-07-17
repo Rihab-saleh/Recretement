@@ -18,10 +18,7 @@ class OffreController extends Controller
         return view('offres.create');
     }
 
-    /**
-     * Page de détails d'une offre, destinée aux candidats (accessible depuis
-     * le tableau de bord candidat en cliquant sur une offre).
-     */
+  
     public function details(Offre $offre)
     {
         $offre->load('personne.entreprise');
@@ -85,9 +82,6 @@ class OffreController extends Controller
         return redirect()->route('manager.dashboard')->with('success', 'Offre créée avec succès.');
     }
 
-    /**
-     * Supprime une offre.
-     */
     public function destroy($id)
     {
         $offre = Offre::where('id', $id)
@@ -111,12 +105,6 @@ class OffreController extends Controller
         return view('offres.index', compact('offres'));
     }
 
-    /**
-     * Liste des candidatures pour une offre donnée (manager).
-     * N'affiche que les candidatures en attente ET validées par le RH :
-     * le manager ne doit jamais voir un dossier que le RH n'a pas encore
-     * contrôlé et transmis.
-     */
     public function candidatures($offre_id)
     {
         $offre = Offre::where('id', $offre_id)
@@ -133,9 +121,7 @@ class OffreController extends Controller
         return view('offres.candidatures', compact('offre', 'candidatures'));
     }
 
-    /**
-     * Le manager accepte ou refuse une candidature.
-     */
+  
     public function deciderCandidat(Request $request, $id)
     {
         $request->validate([
@@ -145,12 +131,10 @@ class OffreController extends Controller
 
         $candidature = Candidature::with('offre')->findOrFail($id);
 
-        // Vérifie que l'offre appartient bien au manager connecté
         if ($candidature->offre->personne_id !== Auth::id()) {
             abort(403);
         }
 
-        // Le manager ne peut décider que sur une candidature validée par le RH.
         if (!$candidature->valide_rh) {
             abort(403, 'Cette candidature doit d\'abord être validée par le RH.');
         }
@@ -178,8 +162,6 @@ class OffreController extends Controller
                     'note_refus' => $motifAutoRefus,
                 ]);
 
-                // Le candidat doit être notifié de ce refus automatique,
-                // au même titre qu'une acceptation ou un refus manuel.
                 Notification::create([
                     'personne_id' => $autre->personne_id,
                     'message' => 'Votre candidature pour le poste "' . ($autre->offre->intitule ?? '')
@@ -228,14 +210,9 @@ class OffreController extends Controller
 
     public function candidatsAcceptes()
     {
-        // Le département de rattachement du manager connecté (ex: "marketing").
         $departement = Auth::user()->departement;
 
-        // On liste ici les employés dont le département ACTUEL (Candidat::affectation,
-        // modifiable par le RH à tout moment) correspond au département du manager —
-        // et non plus l'offre d'origine sur laquelle ils avaient postulé. Ainsi, si le RH
-        // change le département d'un employé, il disparaît automatiquement de cette liste
-        // pour apparaître dans celle du nouveau manager concerné.
+
         $candidatures = Candidature::with(['personne.candidat', 'offre'])
             ->where('statut', 'accepté')
             ->whereHas('personne.candidat', function ($query) use ($departement) {
@@ -247,10 +224,7 @@ class OffreController extends Controller
         return view('offres.candidats', compact('candidatures'));
     }
 
-    /**
-     * Le manager envoie un simple message/signalement au RH à propos
-     * d'un candidat accepté (reçu comme une notification classique).
-     */
+
     public function signalerCandidat(Request $request, $candidatureId)
     {
         $request->validate([
@@ -259,9 +233,7 @@ class OffreController extends Controller
 
         $candidature = Candidature::with(['personne.candidat', 'offre'])->findOrFail($candidatureId);
 
-        // Le manager ne peut signaler qu'un employé actuellement rattaché à SON département
-        // (Candidat::affectation), pas seulement un candidat de ses propres offres d'origine —
-        // cohérent avec la liste affichée dans candidatsAcceptes().
+   
         $departementCandidat = $candidature->personne->candidat->affectation ?? null;
         if ($candidature->statut !== 'accepté' || $departementCandidat !== Auth::user()->departement) {
             abort(403);

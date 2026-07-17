@@ -58,6 +58,8 @@ class DashboardController extends Controller
                 ->when(!empty($appliedOfferIds), function ($query) use ($appliedOfferIds) {
                     return $query->whereNotIn('id', $appliedOfferIds);
                 })
+                ->orderByDesc('datePublication')
+                ->orderByDesc('id')
                 ->get()
                 ->filter(function ($offre) {
                     return ! $offre->estExpiree() && ! $offre->estSaturee();

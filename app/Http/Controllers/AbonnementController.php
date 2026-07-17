@@ -8,11 +8,7 @@ use Illuminate\Support\Facades\Auth;
 
 class AbonnementController extends Controller
 {
-    /**
-     * Bascule l'abonnement du candidat connecté à une entreprise :
-     * il commence ou arrête de recevoir une notification à chaque
-     * nouvelle offre publiée par cette entreprise.
-     */
+    
     public function toggle(Entreprise $entreprise)
     {
         $user = Auth::user();

@@ -6,7 +6,7 @@
 
     <div>
         <h1 class="text-3xl font-bold text-gray-800">
-            Bienvenue, {{ Auth::user()->nom }} 👋
+            Bienvenue, {{ Auth::user()->nom }} 
         </h1>
 
         <p class="mt-2 text-gray-500">

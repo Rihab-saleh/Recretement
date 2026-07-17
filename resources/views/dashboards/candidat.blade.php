@@ -3,7 +3,7 @@
 
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-800">
-                Bienvenue, {{ Auth::user()->nom }} 👋
+                Bienvenue, {{ Auth::user()->nom }} 
             </h1>
             @if(!$estAccepte)
                 <p class="mt-2 text-gray-500">Consultez les offres disponibles et suivez vos candidatures.</p>

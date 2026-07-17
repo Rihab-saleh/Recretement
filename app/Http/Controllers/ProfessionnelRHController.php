@@ -172,9 +172,6 @@ class ProfessionnelRHController extends Controller
 
         $candidat = $candidature->personne->candidat;
 
-        // Le candidat rejoint désormais officiellement l'entreprise qui l'a recruté :
-        // on le rattache sur sa fiche Personne (nécessaire pour les listes paie/calendrier,
-        // qui filtrent directement sur personne.entreprise_id).
         $candidature->personne->update([
             'entreprise_id' => $candidature->offre?->personne?->entreprise_id,
         ]);

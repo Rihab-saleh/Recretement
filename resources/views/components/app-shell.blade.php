@@ -42,8 +42,6 @@
         }
     </style>
 
-    {{-- Applies the saved sidebar state immediately (before Alpine loads) so the
-         sidebar never flashes from expanded to collapsed on page load. --}}
     <script>
         (function () {
             try {
