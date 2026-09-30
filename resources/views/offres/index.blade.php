@@ -1,27 +1,43 @@
 <x-app-shell>
-    <h1>Offres disponibles</h1>
+    <div class="max-w-5xl mx-auto px-6 py-8">
 
-    @if(session('error'))
-        <p style="color:red">{{ session('error') }}</p>
-    @endif
-
-    @foreach($offres as $offre)
-        <div>
-            <h2>{{ $offre->intitule }}</h2>
-            <p>{{ $offre->departement }}</p>
-            <p>{{ $offre->description }}</p>
-            <p>Salaire : {{ $offre->salaire }} DT</p>
-            <p>Statut : {{ $offre->statut }}</p>
-            <p>Date limite : {{ $offre->date_fin?->format('d/m/Y') ?? 'Non définie' }}</p>
-
-            @if($offre->statut === 'ouvert')
-                <a href="{{ route('candidature.create', $offre->id) }}">
-                    <button>Postuler</button>
-                </a>
-            @else
-                <button disabled>Offre fermée</button>
-            @endif
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Offres disponibles</h1>
+            <p class="mt-2 text-gray-500">
+                Parcourez les offres ouvertes et filtrez-les selon vos critères.
+                @guest
+                    Connectez-vous en tant que candidat pour pouvoir postuler.
+                @endguest
+            </p>
         </div>
-        <hr>
-    @endforeach
+
+        @if(session('success'))
+            <div class="bg-green-100 text-green-700 px-4 py-3 rounded-lg mb-6">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="bg-red-100 text-red-700 px-4 py-3 rounded-lg mb-6">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        @include('offres._filtre', ['action' => route('offres.index'), 'departements' => $departements, 'filtres' => $filtres])
+
+        <div>
+            @forelse($offres as $offre)
+                @include('offres._carte', [
+                    'offre' => $offre,
+                    'dejaPostule' => in_array($offre->id, $appliedOfferIds ?? []),
+                    'estAccepte' => $estAccepte ?? false,
+                ])
+            @empty
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center text-gray-400">
+                    Aucune offre ne correspond à votre recherche pour le moment.
+                </div>
+            @endforelse
+        </div>
+
+    </div>
 </x-app-shell>

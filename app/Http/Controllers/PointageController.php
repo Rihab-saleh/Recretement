@@ -26,9 +26,9 @@ class PointageController extends Controller
 
         $heureEntree = now();
 
-        $heureDebut = now()->copy()->setTime(8, 0, 0);
+        $heureDebut = now()->copy()->setTime(9, 0, 0);
 
-        $heureLimite = now()->copy()->setTime(9, 0, 0);
+        $heureLimite = now()->copy()->setTime(10, 0, 0);
 
         if ($heureEntree->greaterThan($heureLimite)) {
 

@@ -93,16 +93,31 @@ class OffreController extends Controller
         return redirect()->back()->with('success', 'Offre supprimée avec succès.');
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $filtres = $request->only(['recherche', 'departement', 'salaire_min', 'tri']);
+
         $offres = Offre::where('statut', 'ouvert')
-            ->latest()
+            ->with('personne.entreprise')
+            ->filtrer($filtres)
             ->get()
             ->filter(function ($offre) {
                 return ! $offre->estExpiree() && ! $offre->estSaturee();
             });
 
-        return view('offres.index', compact('offres'));
+        $departements = Offre::departementsDisponibles();
+
+        // Pour un candidat déjà connecté : ne pas remontrer "Postuler" sur les offres où il a déjà postulé,
+        // et savoir s'il a déjà été accepté ailleurs (auquel cas il ne peut plus postuler).
+        $appliedOfferIds = [];
+        $estAccepte = false;
+        if (Auth::check() && Auth::user()->role === 'candidat') {
+            $mesCandidatures = Candidature::where('personne_id', Auth::id())->get();
+            $appliedOfferIds = $mesCandidatures->pluck('offre_id')->all();
+            $estAccepte = $mesCandidatures->where('statut', 'accepté')->count() > 0;
+        }
+
+        return view('offres.index', compact('offres', 'departements', 'filtres', 'appliedOfferIds', 'estAccepte'));
     }
 
     public function candidatures($offre_id)

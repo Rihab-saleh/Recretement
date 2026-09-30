@@ -11,6 +11,7 @@ use App\Models\FichePaie;
 use App\Models\Pointage;
 use App\Models\Notification;
 use App\Services\ContratService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -43,12 +44,15 @@ class DashboardController extends Controller
         return view('dashboards.manager', compact('offres', 'departement', 'personne'));
     }
 
-    public function candidat()
+    public function candidat(Request $request)
     {
         $candidatures = Candidature::where('personne_id', Auth::id())->with('offre')->get();
 
         $appliedOfferIds = $candidatures->pluck('offre_id')->all();
         $estAccepte = $candidatures->where('statut', 'accepté')->count() > 0;
+
+        $filtres = $request->only(['recherche', 'departement', 'salaire_min', 'tri']);
+        $departements = Offre::departementsDisponibles();
 
         if ($estAccepte) {
             $offres = collect();
@@ -58,8 +62,7 @@ class DashboardController extends Controller
                 ->when(!empty($appliedOfferIds), function ($query) use ($appliedOfferIds) {
                     return $query->whereNotIn('id', $appliedOfferIds);
                 })
-                ->orderByDesc('datePublication')
-                ->orderByDesc('id')
+                ->filtrer($filtres)
                 ->get()
                 ->filter(function ($offre) {
                     return ! $offre->estExpiree() && ! $offre->estSaturee();
@@ -87,7 +90,8 @@ class DashboardController extends Controller
         $entreprisesSuivies = \App\Models\Abonnement::where('personne_id', Auth::id())->pluck('entreprise_id')->all();
 
         return view('dashboards.candidat', compact(
-            'offres', 'candidatures', 'estAccepte', 'pointages', 'pointeAujourdhui', 'sortiAujourdhui', 'entreprisesSuivies'
+            'offres', 'candidatures', 'estAccepte', 'pointages', 'pointeAujourdhui', 'sortiAujourdhui',
+            'entreprisesSuivies', 'filtres', 'departements'
         ));
     }
 

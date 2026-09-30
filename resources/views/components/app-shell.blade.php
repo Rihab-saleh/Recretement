@@ -55,7 +55,7 @@
 <body class="font-sans antialiased bg-[#F1F5FB] text-[#13224B]">
 @php
     $user = auth()->user();
-    $role = $user?->role ?? 'candidat';
+    $role = $user?->role; // null pour un visiteur non connecté (avant : forcé à 'candidat', ce qui affichait à tort le menu/notifs/déconnexion)
     $estAccepte = false;
     if ($user && $role === 'candidat') {
         $estAccepte = \App\Models\Candidature::where('personne_id', $user->id)
@@ -64,6 +64,9 @@
     }
 
     $menus = [
+        'guest' => [
+            ['Offres', 'offres.index', 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+        ],
         'manager' => [
             ['Dashboard',    'manager.dashboard', 'M3 12l9-9 9 9M4 10v10a1 1 0 001 1h5v-6h4v6h5a1 1 0 001-1V10'],
             ['Créer offre',  'offres.create',     'M12 4v16m8-8H4'],
@@ -93,8 +96,8 @@
             ['Entreprises', 'super-admin.dashboard', 'M3 21h18M5 21V7l8-4v18M13 21V11l6 4v6M9 9h.01M9 13h.01M9 17h.01'],
         ],
     ];
-    $items = $menus[$role] ?? $menus['candidat'];
-    $roleLabel = ['manager' => 'Manager', 'candidat' => 'Candidat', 'rh' => 'RH', 'admin' => 'Admin', 'super_admin' => 'Super Admin'][$role] ?? ucfirst($role);
+    $items = $menus[$role] ?? $menus['guest'];
+    $roleLabel = ['manager' => 'Manager', 'candidat' => 'Candidat', 'rh' => 'RH', 'admin' => 'Admin', 'super_admin' => 'Super Admin'][$role] ?? null;
     
     if ($role === 'candidat' && $estAccepte) {
         $roleLabel = 'Employé';
@@ -231,7 +234,7 @@
                 {{-- Right: notifications + user --}}
                 <div class="flex items-center gap-2">
 
-                    @if(in_array($role, ['candidat', 'rh']))
+                    @if($user && in_array($role, ['candidat', 'rh']))
                         <div x-data="{ openNotif: false }" class="relative">
                             <button @click="openNotif = !openNotif; if (openNotif) { fetch('{{ route('notifications.marquer-lu') }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }) }"
                                     class="relative text-[#F1F5FB]/70 hover:text-white p-2 rounded-full hover:bg-[#1B2E63]/60">
@@ -276,33 +279,47 @@
                         </div>
                     @endif
 
-                    {{-- Dropdown utilisateur --}}
-                    <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" class="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 hover:bg-[#1B2E63]/60">
-                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-[#60A5FA] text-sm font-serif font-semibold text-[#13224B]">
-                                {{ strtoupper(substr($user?->prenom ?? $user?->nom ?? 'U', 0, 1)) }}
-                            </span>
-                            <span class="hidden text-left sm:block">
-                                <span class="block text-sm font-medium text-[#F1F5FB]">{{ $user?->prenom }} {{ $user?->nom }}</span>
-                                <span class="block text-[11px] font-mono uppercase tracking-wide text-[#F1F5FB]/50">{{ $roleLabel }}</span>
-                            </span>
-                            <svg class="h-4 w-4 text-[#F1F5FB]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
+                    @if($user)
+                        {{-- Dropdown utilisateur (uniquement si connecté) --}}
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" class="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 hover:bg-[#1B2E63]/60">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-[#60A5FA] text-sm font-serif font-semibold text-[#13224B]">
+                                    {{ strtoupper(substr($user->prenom ?? $user->nom ?? 'U', 0, 1)) }}
+                                </span>
+                                <span class="hidden text-left sm:block">
+                                    <span class="block text-sm font-medium text-[#F1F5FB]">{{ $user->prenom }} {{ $user->nom }}</span>
+                                    <span class="block text-[11px] font-mono uppercase tracking-wide text-[#F1F5FB]/50">{{ $roleLabel }}</span>
+                                </span>
+                                <svg class="h-4 w-4 text-[#F1F5FB]/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
 
-                        <div x-show="open" x-cloak @click.outside="open = false"
-                             x-transition
-                             class="absolute right-0 mt-2 w-48 rounded-xl border border-[#DCE6F5] bg-white py-1 shadow-lg">
-                            <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-[#13224B] hover:bg-[#F1F5FB]">Profil</a>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="block w-full px-4 py-2 text-left text-sm text-[#13224B] hover:bg-[#F1F5FB]">
-                                    Déconnexion
-                                </button>
-                            </form>
+                            <div x-show="open" x-cloak @click.outside="open = false"
+                                 x-transition
+                                 class="absolute right-0 mt-2 w-48 rounded-xl border border-[#DCE6F5] bg-white py-1 shadow-lg">
+                                <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-[#13224B] hover:bg-[#F1F5FB]">Profil</a>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="block w-full px-4 py-2 text-left text-sm text-[#13224B] hover:bg-[#F1F5FB]">
+                                        Déconnexion
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        {{-- Visiteur non connecté : connexion / inscription à la place du menu utilisateur --}}
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('login') }}"
+                               class="text-sm font-medium text-[#F1F5FB]/80 hover:text-white px-3 py-2 rounded-lg hover:bg-[#1B2E63]/60 transition">
+                                Se connecter
+                            </a>
+                            <a href="{{ route('register') }}"
+                               class="text-sm font-semibold bg-[#60A5FA] text-[#13224B] px-4 py-2 rounded-lg hover:bg-[#7DB4FB] transition">
+                                S'inscrire
+                            </a>
+                        </div>
+                    @endif
 
                 </div>
             </div>

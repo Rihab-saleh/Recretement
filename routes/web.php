@@ -15,7 +15,8 @@ use App\Http\Controllers\EntrepriseController;
 use App\Http\Controllers\AbonnementController;
 
 
-//fonctionalites manager 
+//fonctionalites manager
+Route::view('/', 'welcome')->name('home');
 Route::get('/offres/create', [OffreController::class, 'create'])->name('offres.create');
 Route::get('/offres/{offre}/details', [OffreController::class, 'details'])->name('offres.details');
 Route::post('/offres', [OffreController::class, 'store'])->name('offres.store');
@@ -27,10 +28,6 @@ Route::delete('/candidatures/{id}', [OffreController::class, 'supprimerCandidatu
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
-//fonctionaliter  candidat
-Route::get('/postuler/{offre_id}', [CandidatureController::class, 'create'])->name('candidature.create');
-Route::post('/postuler', [CandidatureController::class, 'store'])->name('candidature.store');
-Route::get('/mes-candidatures', [CandidatureController::class, 'index'])->name('candidature.index');
 
 Route::get('/offres', [OffreController::class, 'index'])->name('offres.index');
 //employe conge
@@ -47,6 +44,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', function () {
         return redirect()->back();
     })->name('profile.edit');
+
+    // Postuler a une offre : reserve aux candidats connectes
+    Route::middleware('role:candidat')->group(function () {
+        Route::get('/postuler/{offre_id}', [CandidatureController::class, 'create'])->name('candidature.create');
+        Route::post('/postuler', [CandidatureController::class, 'store'])->name('candidature.store');
+        Route::get('/mes-candidatures', [CandidatureController::class, 'index'])->name('candidature.index');
+    });
+
     Route::post('/pointages/pointer', [PointageController::class, 'pointer'])
         ->name('pointages.pointer');
     Route::post('/pointages/sortir', [PointageController::class, 'sortir'])
